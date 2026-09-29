@@ -1,5 +1,5 @@
-// SyncController — Read/write Antigravity IDE config files
-// Only supports Antigravity IDE 2.0+
+// SyncController: lê/escreve arquivos de configuração do Antigravity IDE
+// Compatível somente com Antigravity IDE 2.0+
 
 import { readFile, readdir, mkdir, writeFile } from "fs/promises";
 import * as os from "os";
@@ -25,20 +25,20 @@ export default class SyncController {
         this.context = context;
     }
 
-    /** Initialize controller — find settings.json & keybindings.json */
+    /** Inicializa o controlador: localiza settings.json e keybindings.json */
     public static async initialize(
         logger: Logger,
         context: ExtensionContext
     ): Promise<SyncController | undefined> {
-        // Xác minh và tìm đường dẫn cấu hình cho settings.json & keybindings.json
+        // Verifica e localiza os caminhos de configuração de settings.json e keybindings.json
         for (const fileType of ["settings", "keybindings"] as const) {
             const cachedPath: string | undefined = context.globalState.get(`${fileType}Path`);
 
-            // Xác minh đường dẫn đã cache: xóa nếu trỏ sai thư mục hoặc file không tồn tại
+            // Verifica o caminho em cache: remove se apontar para a pasta errada ou se o arquivo não existir
             if (cachedPath) {
                 const isStale = await SyncController.isPathStale(cachedPath, logger);
                 if (isStale) {
-                    logger.info(`Cached path is stale, re-detecting: ${cachedPath}`);
+                    logger.info(`Caminho em cache está desatualizado, detectando novamente: ${cachedPath}`);
                     await context.globalState.update(`${fileType}Path`, undefined);
                 }
             }
@@ -47,10 +47,10 @@ export default class SyncController {
                 const found = await SyncController.findConfigFile(fileType, logger);
                 if (found) {
                     context.globalState.update(`${fileType}Path`, found);
-                    logger.info(`Found ${fileType}.json: ${found}`);
+                    logger.info(`${fileType}.json encontrado: ${found}`);
                 } else {
                     logger.error(
-                        `Cannot find ${fileType}.json — opening file picker`,
+                        `Não foi possível encontrar ${fileType}.json: abrindo o seletor de arquivos`,
                         "SyncController.initialize",
                         true
                     );
@@ -59,7 +59,7 @@ export default class SyncController {
                         context.globalState.update(`${fileType}Path`, manualPath);
                     } catch {
                         logger.error(
-                            `${fileType}.json is required. Please reactivate the extension.`,
+                            `${fileType}.json é obrigatório. Reative a extensão.`,
                             "SyncController.initialize",
                             true
                         );
@@ -69,19 +69,19 @@ export default class SyncController {
             }
         }
 
-        // Validate: settingsPath và keybindingsPath không được trỏ cùng 1 file
+        // Valida: settingsPath e keybindingsPath não podem apontar para o mesmo arquivo
         const settingsPath = context.globalState.get<string>("settingsPath");
         const keybindingsPath = context.globalState.get<string>("keybindingsPath");
         if (settingsPath && keybindingsPath && settingsPath === keybindingsPath) {
-            logger.warn(`Settings and keybindings paths are identical: ${settingsPath} — re-detecting keybindings`);
+            logger.warn(`Os caminhos de configurações e atalhos são idênticos: ${settingsPath} - detectando os atalhos novamente`);
             await context.globalState.update("keybindingsPath", undefined);
             const found = await SyncController.findConfigFile("keybindings", logger);
             if (found) {
                 await context.globalState.update("keybindingsPath", found);
-                logger.info(`Re-detected keybindings.json: ${found}`);
+                logger.info(`keybindings.json detectado novamente: ${found}`);
             } else {
                 logger.error(
-                    "Cannot find keybindings.json — opening file picker",
+                    "Não foi possível encontrar keybindings.json: abrindo o seletor de arquivos",
                     "SyncController.initialize",
                     true
                 );
@@ -90,7 +90,7 @@ export default class SyncController {
                     await context.globalState.update("keybindingsPath", manualPath);
                 } catch {
                     logger.error(
-                        "keybindings.json is required. Please reactivate the extension.",
+                        "keybindings.json é obrigatório. Reative a extensão.",
                         "SyncController.initialize",
                         true
                     );
@@ -102,37 +102,37 @@ export default class SyncController {
         return new SyncController(logger, context);
     }
 
-    /** Kiểm tra đường dẫn cache có còn hợp lệ không (file tồn tại + đúng thư mục Antigravity IDE) */
+    /** Verifica se o caminho em cache continua válido (arquivo existe e está na pasta correta do Antigravity IDE) */
     private static async isPathStale(cachedPath: string, logger: Logger): Promise<boolean> {
-        // Phát hiện đường dẫn thuộc thư mục "Antigravity" cũ (không phải "Antigravity IDE")
+        // Detecta um caminho da pasta legada "Antigravity" (não "Antigravity IDE")
         const normalizedPath = cachedPath.replace(/\\/g, "/");
         if (/\/Antigravity\/User\//i.test(normalizedPath) && !/\/Antigravity IDE\/User\//i.test(normalizedPath)) {
-            logger.info(`Path belongs to legacy Antigravity (not Antigravity IDE): ${cachedPath}`);
+            logger.info(`O caminho pertence ao Antigravity legado (não ao Antigravity IDE): ${cachedPath}`);
             return true;
         }
 
-        // Phát hiện đường dẫn cross-platform (VD: Windows path cache trên Linux)
+        // Detecta caminhos de outra plataforma (por exemplo, um caminho do Windows em cache no Linux)
         const currentPlatform = os.platform();
         if (currentPlatform !== "win32" && /^[A-Z]:\\/i.test(cachedPath)) {
-            logger.info(`Windows path detected on ${currentPlatform}: ${cachedPath}`);
+            logger.info(`Caminho do Windows detectado em ${currentPlatform}: ${cachedPath}`);
             return true;
         }
         if (currentPlatform === "win32" && cachedPath.startsWith("/")) {
-            logger.info(`Unix path detected on Windows: ${cachedPath}`);
+            logger.info(`Caminho Unix detectado no Windows: ${cachedPath}`);
             return true;
         }
 
-        // Kiểm tra file có tồn tại không
+        // Verifica se o arquivo existe
         try {
             await workspace.fs.stat(Uri.file(cachedPath));
             return false;
         } catch {
-            logger.info(`Cached file no longer exists: ${cachedPath}`);
+            logger.info(`O arquivo em cache não existe mais: ${cachedPath}`);
             return true;
         }
     }
 
-    /** Try multiple possible paths to find config file — auto-creates at default path if missing */
+    /** Tenta vários caminhos para localizar o arquivo de configuração: cria no caminho padrão se estiver ausente */
     private static async findConfigFile(
         file: "settings" | "keybindings",
         logger: Logger
@@ -143,21 +143,21 @@ export default class SyncController {
                 await workspace.fs.stat(Uri.file(candidatePath));
                 return candidatePath;
             } catch {
-                logger.info(`Not found: ${candidatePath}`);
+                logger.info(`Não encontrado: ${candidatePath}`);
             }
         }
 
-        // Auto-create at first candidate path instead of requiring manual file picker
+        // Cria automaticamente no primeiro caminho candidato em vez de exigir o seletor manual
         if (candidates.length > 0) {
             const defaultPath = candidates[0];
             try {
                 const defaultContent = file === "settings" ? "{}" : "[]";
                 await mkdir(path.dirname(defaultPath), { recursive: true });
                 await writeFile(defaultPath, defaultContent);
-                logger.info(`Created default ${file}.json at: ${defaultPath}`);
+                logger.info(`${file}.json padrão criado em: ${defaultPath}`);
                 return defaultPath;
             } catch (err) {
-                logger.error(`Failed to create default ${file}.json`, "findConfigFile", false, err);
+                logger.error(`Falha ao criar ${file}.json padrão`, "findConfigFile", false, err);
             }
         }
 
@@ -187,7 +187,7 @@ export default class SyncController {
         }
     }
 
-    /** Open file dialog for manual config file selection */
+    /** Abre a caixa de diálogo para seleção manual do arquivo de configuração */
     public static async setManualPath(
         t: "keybindings" | "settings",
         title?: string
@@ -196,13 +196,13 @@ export default class SyncController {
             canSelectFiles: true,
             canSelectFolders: false,
             canSelectMany: false,
-            filters: { "JSON files": ["json"] },
-            title: title || `Select ${t}.json file`,
+            filters: { "Arquivos JSON": ["json"] },
+            title: title || `Selecionar o arquivo ${t}.json`,
         }))!;
         return manualPath[0].fsPath;
     }
 
-    /** Read current config based on enabled sync items */
+    /** Lê a configuração atual com base nos itens de sincronização habilitados */
     public async getActiveProfile(syncItems: ISyncItem[]): Promise<IProfile> {
         const data: Record<string, any> = {};
 
@@ -228,7 +228,7 @@ export default class SyncController {
         return { profileName: "", data };
     }
 
-    /** Write config based on enabled sync items (extensions handled by provider separately) */
+    /** Escreve a configuração com base nos itens habilitados (as extensões são tratadas separadamente pelo provedor) */
     public async updateLocalProfile(profile: IProfile, syncItems: ISyncItem[]) {
         for (const item of syncItems.filter(i => i.enabled)) {
             switch (item.key) {
@@ -252,46 +252,46 @@ export default class SyncController {
                     }
                     break;
                 }
-                // extensions handled by provider (via getExtensionDiff + applyExtensionSync)
+                // As extensões são tratadas pelo provedor (via getExtensionDiff + applyExtensionSync)
                 default:
                     break;
             }
         }
     }
 
-    /** Read config file as base64 — preserves comments/whitespace */
+    /** Lê o arquivo de configuração como base64: preserva comentários/espaços em branco */
     private async readConfigRaw(t: "keybindings" | "settings"): Promise<string | undefined> {
         let filePath: string;
         try {
             filePath = this.context.globalState.get(`${t}Path`)!;
         } catch {
-            this.logger.error(`${t} path has not been set`, "SyncController.readConfigRaw", true);
+            this.logger.error(`O caminho de ${t} não foi definido`, "SyncController.readConfigRaw", true);
             return undefined;
         }
         try {
             const buffer = await readFile(filePath);
             return buffer.toString("base64");
         } catch (error) {
-            this.logger.error(`Failed to read ${t} file: ${filePath}`, "SyncController.readConfigRaw", true, error);
+            this.logger.error(`Falha ao ler o arquivo de ${t}: ${filePath}`, "SyncController.readConfigRaw", true, error);
             return undefined;
         }
     }
 
-    /** Write base64-encoded config file back to disk */
+    /** Grava o arquivo de configuração codificado em base64 no disco */
     private async writeConfigRaw(filePath: string, base64Content: string): Promise<void> {
         try {
             await workspace.fs.writeFile(
                 Uri.file(filePath),
                 Buffer.from(base64Content, "base64")
             );
-            this.logger.info(`Configuration file updated: ${filePath}`);
+            this.logger.info(`Arquivo de configuração atualizado: ${filePath}`);
         } catch (error) {
-            this.logger.error(`Failed to write config file: ${filePath}`, "SyncController.writeConfigRaw", true, error);
+            this.logger.error(`Falha ao gravar o arquivo de configuração: ${filePath}`, "SyncController.writeConfigRaw", true, error);
             throw error;
         }
     }
 
-    /** Get list of installed extensions (excluding built-in) */
+    /** Obtém a lista de extensões instaladas (exceto as nativas) */
     private getExtensions(): string[] {
         const excludeList =
             workspace
@@ -303,9 +303,9 @@ export default class SyncController {
             .filter((id) => !excludeList.includes(id));
     }
 
-    // ===== Snippets helpers =====
+    // ===== Auxiliares de snippets =====
 
-    /** Try multiple possible paths to find a config directory */
+    /** Tenta vários caminhos para localizar uma pasta de configuração */
     private static async findConfigDir(dir: string, logger: Logger): Promise<string | null> {
         const candidates = SyncController.getConfigPaths(dir);
         for (const p of candidates) {
@@ -313,13 +313,13 @@ export default class SyncController {
                 await workspace.fs.stat(Uri.file(p));
                 return p;
             } catch {
-                logger.info(`Not found: ${p}`);
+                logger.info(`Não encontrado: ${p}`);
             }
         }
         return null;
     }
 
-    /** Read all snippet files → bundled object { fileName: base64content } */
+    /** Lê todos os arquivos de snippets e cria o objeto agrupado { fileName: base64content } */
     private async readSnippets(): Promise<Record<string, string>> {
         const dir = await SyncController.findConfigDir("snippets", this.logger);
         const bundle: Record<string, string> = {};
@@ -334,16 +334,16 @@ export default class SyncController {
                 }
             }
         } catch {
-            // Directory doesn't exist or is empty
+            // A pasta não existe ou está vazia
         }
         return bundle;
     }
 
-    /** Write bundled snippets back to individual files */
+    /** Grava os snippets agrupados de volta em arquivos individuais */
     private async writeSnippets(bundle: Record<string, string>): Promise<void> {
         let dir = await SyncController.findConfigDir("snippets", this.logger);
         if (!dir) {
-            // Fallback: create at first candidate path
+            // Alternativa: cria no primeiro caminho candidato
             dir = SyncController.getConfigPaths("snippets")[0];
         }
         await mkdir(dir, { recursive: true });
@@ -351,10 +351,10 @@ export default class SyncController {
             const filePath = path.join(dir, fileName);
             await writeFile(filePath, Buffer.from(base64Content, "base64"));
         }
-        this.logger.info(`Snippets synced: ${Object.keys(bundle).length} file(s)`);
+        this.logger.info(`Snippets sincronizados: ${Object.keys(bundle).length} arquivo(s)`);
     }
 
-    /** Compare local vs remote extensions — returns diff for provider confirmation */
+    /** Compara extensões locais e remotas: retorna as diferenças para confirmação do provedor */
     public getExtensionDiff(remoteList: string[]): { toInstall: string[]; toDelete: string[] } {
         const localList = this.getExtensions();
         const localSet = new Set(localList);
@@ -366,7 +366,7 @@ export default class SyncController {
         };
     }
 
-    /** Apply extension sync — install/uninstall without confirm (provider already confirmed) */
+    /** Aplica a sincronização de extensões: instala/desinstala sem confirmar (o provedor já confirmou) */
     public async applyExtensionSync(toInstall: string[], toDelete: string[]): Promise<boolean> {
         let needsReload = false;
 
@@ -375,7 +375,7 @@ export default class SyncController {
                 await commands.executeCommand("workbench.extensions.uninstallExtension", id);
                 needsReload = true;
             } catch (error) {
-                this.logger.error(`Failed to uninstall ${id}`, "applyExtensionSync", false, error);
+                this.logger.error(`Falha ao desinstalar ${id}`, "applyExtensionSync", false, error);
             }
         }
 
@@ -384,7 +384,7 @@ export default class SyncController {
                 await commands.executeCommand("workbench.extensions.installExtension", id);
                 needsReload = true;
             } catch (error) {
-                this.logger.error(`Failed to install ${id}`, "applyExtensionSync", false, error);
+                this.logger.error(`Falha ao instalar ${id}`, "applyExtensionSync", false, error);
             }
         }
 

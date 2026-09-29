@@ -1,5 +1,5 @@
-// Google OAuth 2.0 — Self-managed flow for desktop app
-// Uses localhost HTTP server to receive callback, SecretStorage for token persistence
+// Google OAuth 2.0: fluxo autogerenciado para aplicativo desktop
+// Usa servidor HTTP local para receber o retorno e SecretStorage para persistir tokens
 
 import * as http from "http";
 import * as https from "https";
@@ -7,7 +7,7 @@ import * as crypto from "crypto";
 import { ExtensionContext, Uri, env, window } from "vscode";
 import Logger from "./logger";
 
-// OAuth config — injected from .env at build time via webpack DefinePlugin
+// Configuração OAuth: injetada de .env durante a compilação pelo webpack DefinePlugin
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
 const SCOPES = [
@@ -36,7 +36,7 @@ export default class GoogleAuth {
         this.context = context;
     }
 
-    /** Check if user is authenticated and token is valid */
+    /** Verifica se a pessoa usuária está autenticada e se o token é válido */
     public async isAuthenticated(): Promise<boolean> {
         if (!this.tokens) {
             await this.restoreTokens();
@@ -44,7 +44,7 @@ export default class GoogleAuth {
         if (!this.tokens) {
             return false;
         }
-        // Refresh if expiring within 5 minutes
+        // Atualiza se expirar nos próximos cinco minutos
         if (Date.now() > this.tokens.expires_at - 5 * 60 * 1000) {
             try {
                 await this.refreshAccessToken();
@@ -56,14 +56,14 @@ export default class GoogleAuth {
         return true;
     }
 
-    /** Get valid access token (auto-refresh if needed) */
+    /** Obtém um token de acesso válido (atualiza automaticamente se necessário) */
     public async getAccessToken(): Promise<string> {
         if (!this.tokens) {
             await this.restoreTokens();
         }
         if (!this.tokens) {
             throw new Error(
-                "Not authenticated. Please login with Google first."
+                "Não autenticado. Inicie sessão com o Google primeiro."
             );
         }
         // Refresh if expiring within 5 minutes
@@ -73,41 +73,41 @@ export default class GoogleAuth {
         return this.tokens!.access_token;
     }
 
-    /** Start OAuth login flow — opens browser, waits for callback */
+    /** Inicia o fluxo de login OAuth: abre o navegador e aguarda o retorno */
     public async login(): Promise<void> {
         const state = crypto.randomBytes(16).toString("hex");
 
-        // Start localhost server to catch callback
+        // Inicia um servidor local para capturar o retorno
         const { port, codePromise } = await this.startCallbackServer(state);
         const redirectUri = `http://localhost:${port}/callback`;
 
-        // Build OAuth URL
+        // Monta a URL OAuth
         const params = new URLSearchParams({
             client_id: CLIENT_ID,
             redirect_uri: redirectUri,
             response_type: "code",
             scope: SCOPES.join(" "),
             state: state,
-            access_type: "offline", // Get refresh_token
-            prompt: "consent", // Force consent screen (ensures refresh_token)
+            access_type: "offline", // Obtém refresh_token
+            prompt: "consent", // Força a tela de consentimento (garante refresh_token)
         });
 
         const authUrl = `${AUTH_URL}?${params.toString()}`;
         this.logger.info("Opening browser for Google login...");
 
-        // Open browser
+        // Abre o navegador
         const opened = await env.openExternal(Uri.parse(authUrl));
         if (!opened) {
             throw new Error(
-                "Failed to open browser for Google login. Please try again."
+                "Falha ao abrir o navegador para iniciar sessão com o Google. Tente novamente."
             );
         }
 
-        // Wait for callback (30s timeout)
+        // Aguarda o retorno (limite de 30 s)
         const code = await codePromise;
         this.logger.info("Authorization code received, exchanging for tokens...");
 
-        // Exchange code for tokens
+        // Troca o código por tokens
         const tokenData = await this.exchangeCodeForTokens(code, redirectUri);
         this.tokens = tokenData;
         await this.saveTokens();
@@ -115,14 +115,14 @@ export default class GoogleAuth {
         this.logger.info("Google login successful!", true);
     }
 
-    /** Logout — clear tokens */
+    /** Encerra a sessão: remove os tokens */
     public async logout(): Promise<void> {
         this.tokens = null;
         await this.context.secrets.delete(TOKEN_KEY);
-        this.logger.info("Logged out from Google", true);
+        this.logger.info("Sessão do Google encerrada", true);
     }
 
-    /** Get logged-in account info */
+    /** Obtém informações da conta com sessão iniciada */
     public async getAccountInfo(): Promise<{
         email: string;
         name: string;
@@ -141,9 +141,9 @@ export default class GoogleAuth {
         }
     }
 
-    // ===== Private methods =====
+    // ===== Métodos privados =====
 
-    /** Start localhost HTTP server to receive OAuth callback */
+    /** Inicia o servidor HTTP local para receber o retorno OAuth */
     private startCallbackServer(
         expectedState: string
     ): Promise<{ port: number; codePromise: Promise<string> }> {
@@ -151,7 +151,7 @@ export default class GoogleAuth {
             const server = http.createServer();
             const timeout = setTimeout(() => {
                 server.close();
-                reject(new Error("Login timed out. Please try again."));
+                reject(new Error("O tempo para iniciar sessão expirou. Tente novamente."));
             }, 120_000); // 2 minute timeout
 
             const codePromise = new Promise<string>((resolveCode, rejectCode) => {
@@ -163,7 +163,7 @@ export default class GoogleAuth {
 
                     if (url.pathname !== "/callback") {
                         res.writeHead(404);
-                        res.end("Not found");
+                        res.end("Não encontrado");
                         return;
                     }
 
@@ -177,28 +177,28 @@ export default class GoogleAuth {
                         clearTimeout(timeout);
                         server.close();
                         rejectCode(
-                            new Error(`Google login denied: ${error}`)
+                            new Error(`Login do Google negado: ${error}`)
                         );
                         return;
                     }
 
                     if (state !== expectedState) {
                         res.writeHead(400, { "Content-Type": "text/html" });
-                        res.end(this.getErrorHtml("Invalid state parameter"));
+                        res.end(this.getErrorHtml("Parâmetro state inválido"));
                         clearTimeout(timeout);
                         server.close();
                         rejectCode(
-                            new Error("OAuth state mismatch — possible CSRF attack")
+                            new Error("Incompatibilidade no state OAuth: possível ataque CSRF")
                         );
                         return;
                     }
 
                     if (!code) {
                         res.writeHead(400, { "Content-Type": "text/html" });
-                        res.end(this.getErrorHtml("No authorization code"));
+                        res.end(this.getErrorHtml("Nenhum código de autorização"));
                         clearTimeout(timeout);
                         server.close();
-                        rejectCode(new Error("No authorization code received"));
+                        rejectCode(new Error("Nenhum código de autorização recebido"));
                         return;
                     }
 
@@ -215,7 +215,7 @@ export default class GoogleAuth {
                 if (addr && typeof addr !== "string") {
                     resolve({ port: addr.port, codePromise });
                 } else {
-                    reject(new Error("Failed to start callback server"));
+                    reject(new Error("Falha ao iniciar o servidor de retorno"));
                 }
             });
 
@@ -226,7 +226,7 @@ export default class GoogleAuth {
         });
     }
 
-    /** Exchange authorization code for tokens */
+    /** Troca o código de autorização por tokens */
     private async exchangeCodeForTokens(
         code: string,
         redirectUri: string
@@ -244,7 +244,7 @@ export default class GoogleAuth {
 
         if (response.error) {
             throw new Error(
-                `Token exchange failed: ${response.error_description || response.error}`
+                `Falha na troca de token: ${response.error_description || response.error}`
             );
         }
 
@@ -255,10 +255,10 @@ export default class GoogleAuth {
         };
     }
 
-    /** Refresh access token using refresh_token */
+    /** Atualiza o token de acesso usando refresh_token */
     private async refreshAccessToken(): Promise<void> {
         if (!this.tokens?.refresh_token) {
-            throw new Error("No refresh token available");
+            throw new Error("Nenhum token de atualização disponível");
         }
 
         const params = new URLSearchParams({
@@ -273,33 +273,33 @@ export default class GoogleAuth {
             const response = JSON.parse(data);
 
             if (response.error) {
-                // Refresh token invalid/revoked — need re-login
+                // Token de atualização inválido ou revogado: é necessário iniciar sessão novamente
                 this.logger.warn(
-                    "Google session expired. Please login again.",
+                    "A sessão do Google expirou. Inicie sessão novamente.",
                     true
                 );
                 this.tokens = null;
                 await this.context.secrets.delete(TOKEN_KEY);
                 throw new Error(
-                    `Refresh failed: ${response.error_description || response.error}`
+                    `Falha na atualização: ${response.error_description || response.error}`
                 );
             }
 
             this.tokens.access_token = response.access_token;
             this.tokens.expires_at =
                 Date.now() + response.expires_in * 1000;
-            // Refresh token is only returned on first auth, keep existing
+            // O token de atualização só é retornado na primeira autenticação: mantém o existente
             if (response.refresh_token) {
                 this.tokens.refresh_token = response.refresh_token;
             }
             await this.saveTokens();
-            this.logger.info("Access token refreshed successfully");
+            this.logger.info("Token de acesso atualizado com sucesso");
         } catch (error: any) {
-            if (error.message?.includes("Refresh failed")) {
+            if (error.message?.includes("Falha na atualização")) {
                 throw error;
             }
             this.logger.error(
-                "Failed to refresh token",
+                "Falha ao atualizar o token",
                 "GoogleAuth.refreshAccessToken",
                 true,
                 error
@@ -308,7 +308,7 @@ export default class GoogleAuth {
         }
     }
 
-    /** Save tokens to SecretStorage */
+    /** Salva os tokens no SecretStorage */
     private async saveTokens(): Promise<void> {
         if (this.tokens) {
             await this.context.secrets.store(
@@ -318,20 +318,20 @@ export default class GoogleAuth {
         }
     }
 
-    /** Restore tokens from SecretStorage */
+    /** Restaura os tokens do SecretStorage */
     private async restoreTokens(): Promise<void> {
         const stored = await this.context.secrets.get(TOKEN_KEY);
         if (stored) {
             try {
                 this.tokens = JSON.parse(stored) as TokenData;
-                this.logger.info("Tokens restored from secure storage");
+                this.logger.info("Tokens restaurados do armazenamento seguro");
             } catch {
                 this.tokens = null;
             }
         }
     }
 
-    /** HTTPS GET request */
+    /** Requisição HTTPS GET */
     private httpsGet(url: string, token: string): Promise<string> {
         return new Promise((resolve, reject) => {
             const parsed = new URL(url);
@@ -354,7 +354,7 @@ export default class GoogleAuth {
         });
     }
 
-    /** HTTPS POST request (form-urlencoded) */
+    /** Requisição HTTPS POST (form-urlencoded) */
     private httpsPost(url: string, body: string): Promise<string> {
         return new Promise((resolve, reject) => {
             const parsed = new URL(url);
@@ -379,21 +379,21 @@ export default class GoogleAuth {
         });
     }
 
-    /** Success HTML page */
+    /** Página HTML de sucesso */
     private getSuccessHtml(): string {
         return `<!DOCTYPE html><html><body style="font-family:system-ui;text-align:center;padding:60px;background:#1e1e2e;color:#cdd6f4">
-<h1 style="color:#a6e3a1">✅ Login Successful!</h1>
-<p>You can close this tab and return to Antigravity.</p>
+<h1 style="color:#a6e3a1">✅ Sessão iniciada com sucesso!</h1>
+<p>Você pode fechar esta aba e retornar ao Antigravity.</p>
 <script>setTimeout(()=>window.close(),3000)</script>
 </body></html>`;
     }
 
-    /** Error HTML page */
+    /** Página HTML de erro */
     private getErrorHtml(error: string): string {
         return `<!DOCTYPE html><html><body style="font-family:system-ui;text-align:center;padding:60px;background:#1e1e2e;color:#cdd6f4">
-<h1 style="color:#f38ba8">❌ Login Failed</h1>
+<h1 style="color:#f38ba8">❌ Falha ao iniciar sessão</h1>
 <p>${error}</p>
-<p>Please close this tab and try again in Antigravity.</p>
+<p>Feche esta aba e tente novamente no Antigravity.</p>
 </body></html>`;
     }
 }

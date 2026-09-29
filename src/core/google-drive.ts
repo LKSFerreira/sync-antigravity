@@ -1,5 +1,5 @@
-// GoogleDriveService — CRUD operations for Google Drive API v3
-// Uses appDataFolder with folder-based profile storage
+// GoogleDriveService: operações CRUD para a API v3 do Google Drive
+// Usa appDataFolder com armazenamento de perfis baseado em pastas
 
 import * as https from "https";
 import { IProfile, IProfileMeta, ISyncItem, ISyncMeta } from "../models/interfaces";
@@ -22,7 +22,7 @@ interface DriveFileList {
     files: DriveFile[];
 }
 
-/** File/folder metadata for App Data Explorer */
+/** Metadados de arquivo/pasta para o Explorador de dados do aplicativo */
 export interface AppDataFile {
     id: string;
     name: string;
@@ -32,15 +32,15 @@ export interface AppDataFile {
     createdTime?: string;
 }
 
-/** Profile folder info returned from listProfiles */
+/** Informações da pasta de perfil retornadas por listProfiles */
 export interface ProfileFolder {
     id: string;
     name: string;
     modifiedTime?: string;
-    syncKeys?: string[];  // From meta.json
+    syncKeys?: string[];  // Vem de meta.json
 }
 
-/** Progress callback for sync operations */
+/** Retorno de progresso para operações de sincronização */
 export type ProgressCallback = (step: string, current: number, total: number, status: "pending" | "active" | "done") => void;
 
 export default class GoogleDriveService {
@@ -52,9 +52,9 @@ export default class GoogleDriveService {
         this.logger = logger;
     }
 
-    // ===== Profile CRUD (Folder-based) =====
+    // ===== CRUD de perfis (baseados em pastas) =====
 
-    /** List all profile folders in appDataFolder */
+    /** Lista todas as pastas de perfis em appDataFolder */
     public async listProfiles(): Promise<ProfileFolder[]> {
         const token = await this.auth.getAccessToken();
         const params = new URLSearchParams({
@@ -74,7 +74,7 @@ export default class GoogleDriveService {
             modifiedTime: f.modifiedTime,
         }));
 
-        // Read sync-meta.json from root (1 API call instead of N)
+        // Lê sync-meta.json na raiz (uma chamada de API em vez de N)
         const syncMeta = await this.getSyncMeta();
         return folders.map(f => ({
             ...f,
@@ -82,13 +82,13 @@ export default class GoogleDriveService {
         }));
     }
 
-    /** Get a profile by folder name — downloads files based on syncItems */
+    /** Obtém um perfil pelo nome da pasta: baixa arquivos conforme syncItems */
     public async getProfile(profileName: string, syncItems: ISyncItem[], onProgress?: ProgressCallback): Promise<IProfile | null> {
         const enabledItems = syncItems.filter(i => i.enabled);
-        const steps = ["Finding Profile", ...enabledItems.map(i => `Downloading ${i.label}`)];
+        const steps = ["Localizando perfil", ...enabledItems.map(i => `Baixando ${i.label}`)];
         let stepIdx = 0;
 
-        // Emit all steps as pending first
+        // Emite primeiro todas as etapas como pendentes
         if (onProgress) {
             for (let i = 0; i < steps.length; i++) {
                 onProgress(steps[i], i, steps.length, "pending");
@@ -104,7 +104,7 @@ export default class GoogleDriveService {
         const profile: IProfile = { profileName, data: {} };
 
         for (const item of enabledItems) {
-            const stepLabel = `Downloading ${item.label}`;
+            const stepLabel = `Baixando ${item.label}`;
             onProgress?.(stepLabel, stepIdx, steps.length, "active");
 
             const file = files.find(f => f.name === item.fileName);
@@ -113,7 +113,7 @@ export default class GoogleDriveService {
                     const content = await this.downloadFileContent(file.id);
                     profile.data[item.key] = JSON.parse(content);
                 } catch {
-                    this.logger.error(`Failed to parse ${item.fileName} in ${profileName}`, "getProfile", false);
+                    this.logger.error(`Falha ao analisar ${item.fileName} em ${profileName}`, "getProfile", false);
                 }
             }
             onProgress?.(stepLabel, stepIdx++, steps.length, "done");
@@ -122,7 +122,7 @@ export default class GoogleDriveService {
         return profile;
     }
 
-    /** Save profile — create or update folder + files based on syncItems */
+    /** Salva o perfil: cria ou atualiza a pasta e os arquivos conforme syncItems */
     public async saveProfile(profile: IProfile, syncItems: ISyncItem[], onProgress?: ProgressCallback): Promise<void> {
         let folder = await this.findFolder(profile.profileName);
         const now = new Date().toISOString();
@@ -130,8 +130,8 @@ export default class GoogleDriveService {
         const enabledItems = syncItems.filter(i => i.enabled);
 
         const steps = isNew
-            ? ["Creating Folder", ...enabledItems.map(i => `Uploading ${i.label}`), "Saving Metadata"]
-            : [...enabledItems.map(i => `Uploading ${i.label}`), "Updating Metadata"];
+            ? ["Criando pasta", ...enabledItems.map(i => `Enviando ${i.label}`), "Salvando metadados"]
+            : [...enabledItems.map(i => `Enviando ${i.label}`), "Atualizando metadados"];
         let stepIdx = 0;
 
         // Emit all steps as pending first
@@ -142,12 +142,12 @@ export default class GoogleDriveService {
         }
 
         if (isNew) {
-            onProgress?.("Creating Folder", stepIdx, steps.length, "active");
+            onProgress?.("Criando pasta", stepIdx, steps.length, "active");
             folder = await this.createFolder(profile.profileName);
-            onProgress?.("Creating Folder", stepIdx++, steps.length, "done");
+            onProgress?.("Criando pasta", stepIdx++, steps.length, "done");
 
             for (const item of enabledItems) {
-                const label = `Uploading ${item.label}`;
+                const label = `Enviando ${item.label}`;
                 onProgress?.(label, stepIdx, steps.length, "active");
                 const content = JSON.stringify(profile.data[item.key] ?? {}, null, 2);
                 await this.createFileInFolder(folder!.id, item.fileName, content);
@@ -156,22 +156,22 @@ export default class GoogleDriveService {
 
             // meta.json
             const syncKeys = enabledItems.map(i => i.key);
-            const metaLabel = "Saving Metadata";
+            const metaLabel = "Salvando metadados";
             onProgress?.(metaLabel, stepIdx, steps.length, "active");
             await this.createFileInFolder(folder!.id, "meta.json", JSON.stringify({
                 name: profile.profileName, createdAt: now, updatedAt: now, syncKeys,
             } as IProfileMeta, null, 2));
             onProgress?.(metaLabel, stepIdx++, steps.length, "done");
 
-            // Update sync-meta.json at root
+            // Atualiza sync-meta.json na raiz
             await this.updateSyncMeta(profile.profileName, syncKeys);
-            this.logger.info(`Profile created: ${profile.profileName}`);
+            this.logger.info(`Perfil criado: ${profile.profileName}`);
         } else {
             const files = await this.listFolderContents(folder!.id);
             const fileMap = new Map(files.map(f => [f.name, f.id]));
 
             for (const item of enabledItems) {
-                const label = `Uploading ${item.label}`;
+                const label = `Enviando ${item.label}`;
                 onProgress?.(label, stepIdx, steps.length, "active");
                 const content = JSON.stringify(profile.data[item.key] ?? {}, null, 2);
                 const existingId = fileMap.get(item.fileName);
@@ -183,8 +183,8 @@ export default class GoogleDriveService {
                 onProgress?.(label, stepIdx++, steps.length, "done");
             }
 
-            // Update meta.json
-            const metaLabel = "Updating Metadata";
+            // Atualiza meta.json
+            const metaLabel = "Atualizando metadados";
             onProgress?.(metaLabel, stepIdx, steps.length, "active");
             const metaId = fileMap.get("meta.json");
             const syncKeys = enabledItems.map(i => i.key);
@@ -209,25 +209,25 @@ export default class GoogleDriveService {
 
             // Update sync-meta.json at root
             await this.updateSyncMeta(profile.profileName, syncKeys);
-            this.logger.info(`Profile updated: ${profile.profileName}`);
+            this.logger.info(`Perfil atualizado: ${profile.profileName}`);
         }
     }
 
-    /** Delete a profile folder (and all its children) */
+    /** Exclui uma pasta de perfil (e todo seu conteúdo) */
     public async deleteProfile(profileName: string): Promise<void> {
         const folder = await this.findFolder(profileName);
         if (!folder) {
-            throw new Error(`Profile "${profileName}" not found`);
+            throw new Error(`Perfil "${profileName}" não encontrado`);
         }
         await this.deleteFile(folder.id);
-        // Update sync-meta.json: remove entry
+        // Atualiza sync-meta.json: remove a entrada
         await this.updateSyncMeta(profileName);
-        this.logger.info(`Profile deleted: ${profileName}`);
+        this.logger.info(`Perfil excluído: ${profileName}`);
     }
 
-    // ===== App Data Explorer =====
+    // ===== Explorador de dados do aplicativo =====
 
-    /** List files/folders in appDataFolder — single page */
+    /** Lista arquivos/pastas em appDataFolder: página única */
     public async listAppDataFiles(parentId?: string, pageToken?: string): Promise<{ files: AppDataFile[]; nextPageToken?: string }> {
         const token = await this.auth.getAccessToken();
         const PAGE_SIZE = 20;
@@ -257,7 +257,7 @@ export default class GoogleDriveService {
         };
     }
 
-    /** Download raw file content by ID */
+    /** Baixa o conteúdo bruto de um arquivo pelo ID */
     public async downloadFileContent(fileId: string): Promise<string> {
         const token = await this.auth.getAccessToken();
         return this.httpsGet(
@@ -266,9 +266,9 @@ export default class GoogleDriveService {
         );
     }
 
-    // ===== Sync Meta (root-level) =====
+    // ===== Metadados de sincronização (nível raiz) =====
 
-    /** Find file by name at root appDataFolder */
+    /** Localiza um arquivo pelo nome na raiz de appDataFolder */
     private async findRootFile(name: string): Promise<DriveFile | null> {
         const token = await this.auth.getAccessToken();
         const params = new URLSearchParams({
@@ -281,7 +281,7 @@ export default class GoogleDriveService {
         return result.files?.[0] || null;
     }
 
-    /** Read sync-meta.json from root */
+    /** Lê sync-meta.json da raiz */
     private async getSyncMeta(): Promise<ISyncMeta> {
         try {
             const file = await this.findRootFile("sync-meta.json");
@@ -293,7 +293,7 @@ export default class GoogleDriveService {
         }
     }
 
-    /** Update or remove entry in sync-meta.json */
+    /** Atualiza ou remove uma entrada em sync-meta.json */
     private async updateSyncMeta(profileName: string, syncKeys?: string[]): Promise<void> {
         try {
             const meta = await this.getSyncMeta();
@@ -307,7 +307,7 @@ export default class GoogleDriveService {
             if (file) {
                 await this.updateFile(file.id, content);
             } else {
-                // Create new sync-meta.json at root
+                // Cria sync-meta.json na raiz
                 const token = await this.auth.getAccessToken();
                 const metadata = JSON.stringify({ name: "sync-meta.json", parents: ["appDataFolder"] });
                 const boundary = "sync_meta_boundary";
@@ -322,13 +322,13 @@ export default class GoogleDriveService {
                 );
             }
         } catch (err) {
-            this.logger.error("Failed to update sync-meta.json", "updateSyncMeta", false, err);
+            this.logger.error("Falha ao atualizar sync-meta.json", "updateSyncMeta", false, err);
         }
     }
 
-    // ===== Folder helpers =====
+    // ===== Auxiliares de pasta =====
 
-    /** Find a folder by name in appDataFolder root */
+    /** Localiza uma pasta pelo nome na raiz de appDataFolder */
     private async findFolder(name: string): Promise<DriveFile | null> {
         const token = await this.auth.getAccessToken();
         const params = new URLSearchParams({
@@ -345,7 +345,7 @@ export default class GoogleDriveService {
         return result.files?.[0] || null;
     }
 
-    /** Create a folder in appDataFolder */
+    /** Cria uma pasta em appDataFolder */
     private async createFolder(name: string): Promise<DriveFile> {
         const token = await this.auth.getAccessToken();
         const metadata = JSON.stringify({
@@ -364,7 +364,7 @@ export default class GoogleDriveService {
         return JSON.parse(data) as DriveFile;
     }
 
-    /** Create a file inside a specific folder */
+    /** Cria um arquivo dentro de uma pasta específica */
     private async createFileInFolder(folderId: string, name: string, content: string): Promise<DriveFile> {
         const token = await this.auth.getAccessToken();
         const metadata = JSON.stringify({
@@ -395,7 +395,7 @@ export default class GoogleDriveService {
         return JSON.parse(data) as DriveFile;
     }
 
-    /** List files inside a folder */
+    /** Lista arquivos dentro de uma pasta */
     private async listFolderContents(folderId: string): Promise<DriveFile[]> {
         const token = await this.auth.getAccessToken();
         const params = new URLSearchParams({
@@ -412,9 +412,9 @@ export default class GoogleDriveService {
         return result.files || [];
     }
 
-    // ===== Private CRUD =====
+    // ===== CRUD privado =====
 
-    /** Update existing file content */
+    /** Atualiza o conteúdo de um arquivo existente */
     private async updateFile(fileId: string, content: string): Promise<void> {
         const token = await this.auth.getAccessToken();
         await this.httpsRequest(
@@ -426,7 +426,7 @@ export default class GoogleDriveService {
         );
     }
 
-    /** Delete file/folder by ID */
+    /** Exclui um arquivo/pasta pelo ID */
     private async deleteFile(fileId: string): Promise<void> {
         const token = await this.auth.getAccessToken();
         await this.httpsRequest(
@@ -438,7 +438,7 @@ export default class GoogleDriveService {
         );
     }
 
-    // ===== HTTP helpers =====
+    // ===== Auxiliares HTTP =====
 
     private httpsGet(url: string, token: string): Promise<string> {
         return new Promise((resolve, reject) => {
@@ -456,7 +456,7 @@ export default class GoogleDriveService {
                     if (res.statusCode && res.statusCode >= 400) {
                         reject(
                             new Error(
-                                `Drive API error ${res.statusCode}: ${data}`
+                                `Erro da API do Drive ${res.statusCode}: ${data}`
                             )
                         );
                     } else {
@@ -495,7 +495,7 @@ export default class GoogleDriveService {
                     if (res.statusCode && res.statusCode >= 400) {
                         reject(
                             new Error(
-                                `Drive API error ${res.statusCode}: ${data}`
+                                `Erro da API do Drive ${res.statusCode}: ${data}`
                             )
                         );
                     } else {

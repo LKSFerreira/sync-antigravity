@@ -1,4 +1,4 @@
-// Logger module — OutputChannel wrapper for Antigravity Sync
+// Logger module - OutputChannel wrapper for Antigravity Sync
 // Fixed switch-case fallthrough bug from original extension
 
 import { OutputChannel, window } from "vscode";

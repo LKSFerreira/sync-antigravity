@@ -1,5 +1,5 @@
-// DashboardProvider — Manages Full Webview Panel Dashboard
-// Creates an editor tab containing the dashboard UI for Antigravity Sync
+// DashboardProvider: gerencia o painel completo da Webview
+// Cria uma aba do editor contendo a interface do painel do Antigravity Sync
 
 import * as vscode from "vscode";
 import GoogleAuth from "../core/google-auth";
@@ -8,7 +8,7 @@ import { DEFAULT_SYNC_ITEMS, ISyncItem } from "../models/interfaces";
 import SyncController from "../core/sync-controller";
 import Logger from "../core/logger";
 
-/** Dashboard state sent to webview */
+/** Estado do painel enviado à Webview */
 interface DashboardState {
     isAuthenticated: boolean;
     email?: string;
@@ -17,7 +17,7 @@ interface DashboardState {
     syncItems: ISyncItem[];
 }
 
-/** Message from webview to extension */
+/** Mensagem da Webview para a extensão */
 interface WebviewMessage {
     command: string;
     name?: string;
@@ -29,7 +29,7 @@ interface WebviewMessage {
     pageToken?: string;
     toInstall?: string[];
     toDelete?: string[];
-    syncKeys?: string[];  // Selected sync keys from UI
+    syncKeys?: string[];  // Chaves de sincronização selecionadas na interface
 }
 
 export default class DashboardProvider {
@@ -56,7 +56,7 @@ export default class DashboardProvider {
         this.logger = logger;
     }
 
-    /** Open or focus the dashboard panel */
+    /** Abre ou foca o painel */
     public show() {
         if (this.panel) {
             this.panel.reveal(vscode.ViewColumn.One);
@@ -85,14 +85,14 @@ export default class DashboardProvider {
 
         this.panel.webview.html = this.getHtmlContent(this.panel.webview);
 
-        // Handle messages from webview
+        // Trata mensagens da Webview
         this.panel.webview.onDidReceiveMessage(
             (message: WebviewMessage) => this.handleMessage(message),
             undefined,
             this.context.subscriptions
         );
 
-        // Cleanup when panel is closed
+        // Limpa recursos quando o painel é fechado
         this.panel.onDidDispose(
             () => {
                 this.panel = undefined;
@@ -101,11 +101,11 @@ export default class DashboardProvider {
             this.context.subscriptions
         );
 
-        // Send initial state when webview is ready
+        // Envia o estado inicial quando a Webview estiver pronta
         this.refreshState();
     }
 
-    /** Send updated state to webview */
+    /** Envia o estado atualizado à Webview */
     public async refreshState() {
         if (!this.panel) { return; }
 
@@ -121,7 +121,7 @@ export default class DashboardProvider {
                     picture = info?.picture;
                 } catch (error) {
                     this.logger.error(
-                        "Failed to fetch account info",
+                        "Falha ao buscar as informações da conta",
                         "DashboardProvider.refreshState",
                         false,
                         error
@@ -129,11 +129,11 @@ export default class DashboardProvider {
                 }
             }
 
-            // Phase 1: Send state immediately with profiles: null (loading)
+            // Fase 1: envia o estado imediatamente com profiles: null (carregando)
             const state: DashboardState = { isAuthenticated, email, picture, profiles: null, syncItems: DEFAULT_SYNC_ITEMS };
             this.panel.webview.postMessage({ type: "state", data: state });
 
-            // Phase 2: Load profiles then send update
+            // Fase 2: carrega os perfis e envia a atualização
             if (isAuthenticated) {
                 try {
                     const folders = await this.drive.listProfiles();
@@ -146,18 +146,18 @@ export default class DashboardProvider {
                     this.panel?.webview.postMessage({ type: "profiles", data: profiles });
                 } catch (error) {
                     this.logger.error(
-                        "Failed to load profiles list",
+                        "Falha ao carregar a lista de perfis",
                         "DashboardProvider.refreshState",
                         false,
                         error
                     );
-                    // Send empty profiles on error — clear loading state
+                    // Envia perfis vazios em caso de erro: limpa o estado de carregamento
                     this.panel?.webview.postMessage({ type: "profiles", data: [] });
                 }
             }
         } catch (error) {
             this.logger.error(
-                "Failed to update dashboard state",
+                "Falha ao atualizar o estado do painel",
                 "DashboardProvider.refreshState",
                 false,
                 error
@@ -165,7 +165,7 @@ export default class DashboardProvider {
         }
     }
 
-    /** Handle messages from webview */
+    /** Trata mensagens da Webview */
     private async handleMessage(message: WebviewMessage) {
         const sendLoading = (action: string, loading: boolean) => {
             this.panel?.webview.postMessage({ type: "loading", action, loading });
@@ -187,9 +187,9 @@ export default class DashboardProvider {
                     sendLoading("login", true);
                     try {
                         await this.auth.login();
-                        sendToast("success", "Signed in successfully!");
+                        sendToast("success", "Sessão iniciada com sucesso!");
                     } catch (loginErr: any) {
-                        sendToast("error", loginErr?.message || "Login failed");
+                        sendToast("error", loginErr?.message || "Falha ao iniciar sessão");
                     }
                     await this.refreshState();
                     sendLoading("login", false);
@@ -198,7 +198,7 @@ export default class DashboardProvider {
                 case "logout":
                     await this.auth.logout();
                     await this.refreshState();
-                    sendToast("info", "Signed out");
+                    sendToast("info", "Sessão encerrada");
                     break;
 
                 case "createProfile": {
@@ -208,14 +208,14 @@ export default class DashboardProvider {
                         enabled: message.syncKeys ? message.syncKeys.includes(item.key) : item.enabled,
                     }));
                     sendLoading("createProfile", true);
-                    this.panel?.webview.postMessage({ type: "syncStart", title: `Creating "${message.name}"` });
+                    this.panel?.webview.postMessage({ type: "syncStart", title: `Criando "${message.name}"` });
                     const current = await this.controller.getActiveProfile(syncItems);
                     current.profileName = message.name;
                     await this.drive.saveProfile(current, syncItems, sendProgress);
                     this.panel?.webview.postMessage({ type: "syncDone" });
                     await this.refreshState();
                     sendLoading("createProfile", false);
-                    sendToast("success", `Profile "${message.name}" created`);
+                    sendToast("success", `Perfil "${message.name}" criado`);
                     break;
                 }
 
@@ -227,11 +227,11 @@ export default class DashboardProvider {
                         enabled: message.syncKeys ? message.syncKeys.includes(item.key) : item.enabled,
                     }));
                     sendLoading(`pull-${profileName}`, true);
-                    this.panel?.webview.postMessage({ type: "syncStart", title: `Pulling "${profileName}"` });
+                    this.panel?.webview.postMessage({ type: "syncStart", title: `Baixando "${profileName}"` });
                     const profile = await this.drive.getProfile(profileName, syncItems, sendProgress);
                     if (!profile) {
                         this.panel?.webview.postMessage({ type: "syncDone" });
-                        sendToast("error", "Profile data is empty");
+                        sendToast("error", "Os dados do perfil estão vazios");
                         sendLoading(`pull-${profileName}`, false);
                         return;
                     }
@@ -239,7 +239,7 @@ export default class DashboardProvider {
                     this.panel?.webview.postMessage({ type: "syncDone" });
                     sendLoading(`pull-${profileName}`, false);
 
-                    // Check extension diff only when extensions is selected
+                    // Verifica as diferenças entre extensões somente quando elas foram selecionadas
                     const extEnabled = syncItems.find(i => i.key === "extensions")?.enabled;
                     const extData = profile.data.extensions;
                     if (extEnabled && extData && Array.isArray(extData)) {
@@ -251,11 +251,11 @@ export default class DashboardProvider {
                                 toDelete: diff.toDelete,
                             });
                         } else {
-                            sendToast("success", `Profile "${profileName}" pulled`);
+                            sendToast("success", `Perfil "${profileName}" baixado`);
                             this.panel?.webview.postMessage({ type: "askReload" });
                         }
                     } else {
-                        sendToast("success", `Profile "${profileName}" pulled`);
+                        sendToast("success", `Perfil "${profileName}" baixado`);
                         this.panel?.webview.postMessage({ type: "askReload" });
                     }
                     break;
@@ -266,7 +266,7 @@ export default class DashboardProvider {
                     sendLoading("extensionSync", true);
                     const needsReload = await this.controller.applyExtensionSync(toInstall || [], toDelete || []);
                     sendLoading("extensionSync", false);
-                    sendToast("success", "Extensions synced");
+                    sendToast("success", "Extensões sincronizadas");
                     if (needsReload) {
                         this.panel?.webview.postMessage({ type: "askReload" });
                     }
@@ -281,14 +281,14 @@ export default class DashboardProvider {
                         enabled: message.syncKeys ? message.syncKeys.includes(item.key) : item.enabled,
                     }));
                     sendLoading(`push-${profileName}`, true);
-                    this.panel?.webview.postMessage({ type: "syncStart", title: `Pushing "${profileName}"` });
+                    this.panel?.webview.postMessage({ type: "syncStart", title: `Enviando "${profileName}"` });
                     const current = await this.controller.getActiveProfile(syncItems);
                     current.profileName = profileName;
                     await this.drive.saveProfile(current, syncItems, sendProgress);
                     this.panel?.webview.postMessage({ type: "syncDone" });
                     await this.refreshState();
                     sendLoading(`push-${profileName}`, false);
-                    sendToast("success", `Profile "${profileName}" updated`);
+                    sendToast("success", `Perfil "${profileName}" atualizado`);
                     break;
                 }
 
@@ -299,7 +299,7 @@ export default class DashboardProvider {
                     await this.drive.deleteProfile(profileName);
                     await this.refreshState();
                     sendLoading(`delete-${profileName}`, false);
-                    sendToast("success", `Profile "${profileName}" deleted`);
+                    sendToast("success", `Perfil "${profileName}" excluído`);
                     break;
                 }
 
@@ -312,12 +312,12 @@ export default class DashboardProvider {
                     try {
                         const filePath = await SyncController.setManualPath(pathType);
                         this.context.globalState.update(`${pathType}Path`, filePath);
-                        sendToast("success", `${pathType} path updated`);
+                        sendToast("success", `Caminho de ${pathType} atualizado`);
                     } catch (err: any) {
-                        // TypeError = user cancelled dialog (undefined[0].fsPath)
+                        // TypeError: a pessoa usuária cancelou a caixa de diálogo (undefined[0].fsPath)
                         if (!(err instanceof TypeError)) {
-                            this.logger.error(`Failed to set ${pathType} path`, "setPaths", false, err);
-                            sendToast("error", `Failed to set ${pathType} path`);
+                            this.logger.error(`Falha ao definir o caminho de ${pathType}`, "setPaths", false, err);
+                            sendToast("error", `Falha ao definir o caminho de ${pathType}`);
                         }
                     }
                     break;
@@ -340,10 +340,10 @@ export default class DashboardProvider {
                             files: result.files,
                             nextPageToken: result.nextPageToken || null,
                             folderId: message.folderId || null,
-                            folderName: message.folderName || "Root",
+                            folderName: message.folderName || "Raiz",
                         });
                     } catch (err: any) {
-                        sendToast("error", err?.message || "Failed to list app data files");
+                        sendToast("error", err?.message || "Falha ao listar os arquivos de dados do aplicativo");
                     }
                     sendLoading("listAppData", false);
                     break;
@@ -357,10 +357,10 @@ export default class DashboardProvider {
                         this.panel?.webview.postMessage({
                             type: "filePreview",
                             content,
-                            fileName: message.fileName || "file",
+                            fileName: message.fileName || "arquivo",
                         });
                     } catch (err: any) {
-                        sendToast("error", err?.message || "Failed to preview file");
+                        sendToast("error", err?.message || "Falha ao visualizar o arquivo");
                     }
                     sendLoading("previewFile", false);
                     break;
@@ -368,19 +368,19 @@ export default class DashboardProvider {
             }
         } catch (error: any) {
             this.logger.error(
-                `Dashboard action failed: ${error?.message}`,
+                `Falha na ação do painel: ${error?.message}`,
                 "DashboardProvider.handleMessage",
                 true,
                 error
             );
-            // Close sync modal if open (allow dismissal on error)
+            // Fecha o modal de sincronização se estiver aberto (permite dispensar em caso de erro)
             this.panel?.webview.postMessage({ type: "syncDone" });
             sendLoading(message.command, false);
-            sendToast("error", error?.message || "An error occurred");
+            sendToast("error", error?.message || "Ocorreu um erro");
         }
     }
 
-    /** Generate HTML content for webview */
+    /** Gera o conteúdo HTML da Webview */
     private getHtmlContent(webview: vscode.Webview): string {
         const cssUri = webview.asWebviewUri(
             vscode.Uri.joinPath(this.extensionUri, "dist", "webview", "dashboard.css")
@@ -401,7 +401,7 @@ export default class DashboardProvider {
         const nonce = getNonce();
 
         return /* html */ `<!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -416,7 +416,7 @@ export default class DashboardProvider {
     <title>Antigravity Sync</title>
 </head>
 <body>
-    <!-- Header -->
+    <!-- Cabeçalho -->
     <header class="header">
         <div class="header-left">
             <span class="codicon codicon-sync header-icon"></span>
@@ -425,29 +425,29 @@ export default class DashboardProvider {
         <div class="header-right" id="header-user"></div>
     </header>
 
-    <!-- Main Content -->
+    <!-- Conteúdo principal -->
     <main class="main">
-        <!-- Not signed in -->
+        <!-- Sem sessão iniciada -->
         <div id="login-section" class="section login-section" style="display:none;">
             <div class="login-card">
                 <span class="codicon codicon-account login-icon"></span>
-                <h2>Welcome to Antigravity Sync</h2>
-                <p class="login-desc">Sync your settings, extensions, and keybindings across devices via Google Drive.</p>
+                <h2>Boas-vindas ao Antigravity Sync</h2>
+                <p class="login-desc">Sincronize suas configurações, extensões e atalhos entre dispositivos pelo Google Drive.</p>
                 <button class="btn btn-primary btn-lg" id="btn-login">
                     <span class="codicon codicon-sign-in"></span>
-                    Sign in with Google
+                    Iniciar sessão com o Google
                 </button>
             </div>
         </div>
 
-        <!-- Dashboard (signed in) -->
+        <!-- Painel (sessão iniciada) -->
         <div id="dashboard-section" style="display:none;">
-            <!-- Account + Quick Actions row -->
+            <!-- Linha de conta e ações rápidas -->
             <div class="grid-row">
                 <div class="card">
                     <div class="card-header">
                         <span class="codicon codicon-account"></span>
-                        <span>Account</span>
+                        <span>Conta</span>
                     </div>
                     <div class="card-body">
                         <div class="account-info">
@@ -456,7 +456,7 @@ export default class DashboardProvider {
                         </div>
                         <button class="btn btn-secondary btn-sm" id="btn-logout">
                             <span class="codicon codicon-sign-out"></span>
-                            Sign Out
+                            Encerrar sessão
                         </button>
                     </div>
                 </div>
@@ -464,85 +464,85 @@ export default class DashboardProvider {
                 <div class="card">
                     <div class="card-header">
                         <span class="codicon codicon-tools"></span>
-                        <span>Quick Actions</span>
+                        <span>Ações rápidas</span>
                     </div>
                     <div class="card-body actions-grid">
                         <button class="btn btn-accent" id="btn-create-profile">
                             <span class="codicon codicon-add"></span>
-                            Create Profile
+                            Criar perfil
                         </button>
                         <button class="btn btn-secondary" id="btn-set-settings-path">
                             <span class="codicon codicon-settings-gear"></span>
-                            Settings Path
+                            Caminho das configurações
                         </button>
                         <button class="btn btn-secondary" id="btn-set-keybindings-path">
                             <span class="codicon codicon-keyboard"></span>
-                            Keybindings Path
+                            Caminho dos atalhos
                         </button>
                         <button class="btn btn-secondary" id="btn-show-logs">
                             <span class="codicon codicon-output"></span>
-                            View Logs
+                            Ver registros
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Profiles Section -->
+            <!-- Seção de perfis -->
             <div class="card profiles-card">
                 <div class="card-header">
                     <div class="card-header-left">
                         <span class="codicon codicon-cloud"></span>
-                        <span>Profiles on Google Drive</span>
+                        <span>Perfis no Google Drive</span>
                         <span class="badge" id="profile-count">0</span>
                     </div>
-                    <button class="btn-icon" id="btn-refresh" title="Refresh">
+                    <button class="btn-icon" id="btn-refresh" title="Atualizar">
                         <span class="codicon codicon-refresh"></span>
                     </button>
                 </div>
                 <div class="card-body">
                     <div id="profiles-empty" class="empty-state" style="display:none;">
                         <span class="codicon codicon-cloud-upload empty-icon"></span>
-                        <p>No profiles yet</p>
-                        <p class="empty-hint">Create your first profile to start syncing.</p>
+                        <p>Ainda não há perfis</p>
+                        <p class="empty-hint">Crie seu primeiro perfil para começar a sincronizar.</p>
                     </div>
                     <div id="profiles-list" class="profiles-grid"></div>
                 </div>
             </div>
         </div>
 
-        <!-- App Data Explorer (signed in) -->
+        <!-- Explorador de dados do aplicativo (sessão iniciada) -->
         <div id="appdata-section" style="display:none;">
             <div class="card appdata-card">
                 <div class="card-header">
                     <div class="card-header-left">
                         <span class="codicon codicon-folder-opened"></span>
-                        <span>App Data Explorer</span>
+                        <span>Explorador de dados do aplicativo</span>
                     </div>
                     <div class="appdata-header-actions">
-                        <button class="btn-icon" id="btn-back-appdata" title="Go Back" style="display:none;">
+                        <button class="btn-icon" id="btn-back-appdata" title="Voltar" style="display:none;">
                             <span class="codicon codicon-arrow-left"></span>
                         </button>
-                        <button class="btn-icon" id="btn-refresh-appdata" title="Refresh">
+                        <button class="btn-icon" id="btn-refresh-appdata" title="Atualizar">
                             <span class="codicon codicon-refresh"></span>
                         </button>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="breadcrumb" id="appdata-breadcrumb">
-                        <span class="breadcrumb-item active">Root</span>
+                        <span class="breadcrumb-item active">Raiz</span>
                     </div>
                     <div id="appdata-empty" class="empty-state" style="display:none;">
                         <span class="codicon codicon-folder empty-icon"></span>
-                        <p>This folder is empty</p>
+                        <p>Esta pasta está vazia</p>
                     </div>
                     <div id="appdata-table-wrapper" class="appdata-table-wrapper">
                         <table class="appdata-table" id="appdata-table">
                             <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th>Type</th>
-                                    <th>Size</th>
-                                    <th>Modified</th>
+                                    <th>Nome</th>
+                                    <th>Tipo</th>
+                                    <th>Tamanho</th>
+                                    <th>Modificado</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -554,7 +554,7 @@ export default class DashboardProvider {
         </div>
     </main>
 
-    <!-- Toast container -->
+    <!-- Contêiner de notificações -->
     <div id="toast-container" class="toast-container"></div>
 
     <script nonce="${nonce}" src="${jsUri}"></script>
@@ -567,7 +567,7 @@ export default class DashboardProvider {
     }
 }
 
-/** Generate random nonce for CSP */
+/** Gera um nonce aleatório para a CSP */
 function getNonce(): string {
     let text = "";
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";

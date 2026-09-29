@@ -4,232 +4,232 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 [![GitHub](https://img.shields.io/badge/GitHub-thotam%2Fantigravity--sync-blue)](https://github.com/thotam/antigravity-sync)
 
-Sync your **Antigravity** settings, extensions, keybindings, and snippets across devices using **Google Drive**.
+Sincronize as configurações, extensões, atalhos e snippets do **Antigravity** entre dispositivos usando o **Google Drive**.
 
-> **Note**: This extension is designed exclusively for [Antigravity IDE](https://www.antigravity.google/). A warning will be shown if used on other editors.
+> **Observação**: esta extensão foi projetada exclusivamente para o [Antigravity IDE](https://www.antigravity.google/). Um aviso será exibido se ela for usada em outros editores.
 
-## Features
+## Recursos
 
-- **Full Dashboard UI** — Modern webview panel with account info, profile management, and quick actions
-- **Folder-based Profiles** — Each profile stored as a dedicated folder with separate config files for easy extensibility
-- **Sync Item Selection** — Choose which items to sync (Settings, Extensions, Keybindings, Snippets) per operation with checkbox modals
-- **Sync Progress Modal** — Real-time step-by-step progress with animated progress bar during sync operations
-- **Extension Sync Confirm** — In-webview modal showing extensions to install/remove before applying
-- **Progressive Loading** — Dashboard appears instantly, data loads progressively with spinners
-- **App Data Explorer** — Browse files/folders in Google Drive appDataFolder with folder navigation, file preview, and pagination
-- **Google Drive Storage** — Data stored securely in a hidden app-specific folder
-- **One-Click Sync** — Push or pull your entire configuration in seconds
-- **Cross-Platform** — Windows, macOS, and Linux
-- **Secure** — Google OAuth 2.0, tokens encrypted by OS via SecretStorage
-- **Google Avatar** — Display your Google profile picture in the dashboard
+- **Painel completo**: painel moderno em Webview com informações da conta, gerenciamento de perfis e ações rápidas
+- **Perfis baseados em pastas**: cada perfil fica em uma pasta própria, com arquivos de configuração separados para facilitar a extensibilidade
+- **Seleção de itens**: escolha, em cada operação, o que sincronizar: configurações, extensões, atalhos e snippets
+- **Modal de progresso**: acompanhamento em tempo real, etapa por etapa, com barra de progresso animada
+- **Confirmação de extensões**: modal na Webview mostra extensões a instalar ou remover antes da aplicação
+- **Carregamento progressivo**: o painel aparece imediatamente e os dados são carregados gradualmente
+- **Explorador de dados do aplicativo**: navegue por arquivos e pastas em appDataFolder do Google Drive, com visualização e paginação
+- **Armazenamento no Google Drive**: dados armazenados com segurança em uma pasta oculta específica do aplicativo
+- **Sincronização com um clique**: envie ou baixe toda a configuração em segundos
+- **Multiplataforma**: Windows, macOS e Linux
+- **Segurança**: Google OAuth 2.0 e tokens criptografados pelo sistema operacional via SecretStorage
+- **Avatar do Google**: exibe a foto do perfil do Google no painel
 
-> 📄 See [FEATURES.md](FEATURES.md) for detailed feature documentation.
+> 📄 Consulte [FEATURES.md](FEATURES.md) para a documentação detalhada dos recursos.
 
-### What Gets Synced
+### O que é sincronizado
 
-| Item                             | Synced |
+| Item                             | Sincronizado |
 | -------------------------------- | ------ |
 | Settings (`settings.json`)       | ✅     |
 | Keybindings (`keybindings.json`) | ✅     |
 | Extensions                       | ✅     |
 | Snippets                         | ✅     |
 
-## Installation
+## Instalação
 
-### From Open VSX Registry
+### Pelo registro Open VSX
 
-Search for **"Antigravity Sync"** in the Extensions panel, or install directly from [open-vsx.org](https://open-vsx.org/extension/thotam/antigravity-sync).
+Pesquise por **"Antigravity Sync"** no painel Extensões ou instale diretamente pelo [open-vsx.org](https://open-vsx.org/extension/thotam/antigravity-sync).
 
-### From VSIX
+### Pelo VSIX
 
-1. Download the `.vsix` file from [Releases](https://github.com/thotam/antigravity-sync/releases)
-2. Open Antigravity → Extensions → `...` → **Install from VSIX**
+1. Baixe o arquivo `.vsix` em [Releases](https://github.com/thotam/antigravity-sync/releases).
+2. Abra Antigravity: Extensões: `...`: **Instalar do VSIX**.
 
-## Requirements
+## Requisitos
 
 - **Antigravity IDE**
-- A Google account
+- Uma conta do Google
 
-## Usage
+## Uso
 
-### First Time Setup
+### Configuração inicial
 
-1. Install the extension
-2. Click the **StatusBar** button or run `Antigravity Sync: Open Dashboard`
-3. Click **Sign in with Google** → Authorize in browser → you're done!
+1. Instale a extensão.
+2. Clique no botão da **barra de status** ou execute `Antigravity Sync: Abrir painel`.
+3. Clique em **Iniciar sessão com o Google**: autorize no navegador: pronto!
 
-### Command
+### Comando
 
-Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`):
+Abra a Paleta de Comandos (`Ctrl+Shift+P` / `Cmd+Shift+P`):
 
-| Command                              | Description              |
+| Comando                              | Descrição              |
 | ------------------------------------ | ------------------------ |
-| **Antigravity Sync: Open Dashboard** | Open the Dashboard panel |
+| **Antigravity Sync: Abrir painel** | Abre o painel |
 
-All profile management (create, pull, push, delete), account actions (sign in/out), and settings are available directly within the Dashboard UI.
+Todo o gerenciamento de perfis (criar, baixar, enviar e excluir), as ações da conta (iniciar e encerrar sessão) e as configurações estão disponíveis diretamente na interface do painel.
 
-### Status Bar
+### Barra de status
 
-Click the `$(sync) Antigravity Sync` button in the status bar to quickly open the Dashboard.
+Clique no botão `$(sync) Antigravity Sync` na barra de status para abrir o painel rapidamente.
 
-### Dashboard Features
+### Recursos do painel
 
-- **Account Card** — Shows your Google email and avatar with sign-out button
-- **Quick Actions** — Create profile, set settings/keybindings path, view logs
-- **Profile Cards** — Pull, push, or delete profiles with one click
-- **Modal Dialogs** — Create profile input, delete/sign-out confirmations, reload prompt
-- **Toast Notifications** — Success/error/info feedback with progress bar and close button
+- **Cartão da conta**: mostra o e-mail e o avatar do Google, com botão para encerrar a sessão
+- **Ações rápidas**: cria perfil, define caminhos de configurações/atalhos e exibe registros
+- **Cartões de perfil**: baixa, envia ou exclui perfis com um clique
+- **Caixas de diálogo modais**: entrada para criar perfil, confirmações de exclusão/encerramento e solicitação de recarregamento
+- **Notificações**: retorno de sucesso, erro e informação, com barra de progresso e botão para fechar
 
-## How It Works
+## Como funciona
 
-1. **Authentication**: OAuth 2.0 flow opens your browser for Google login
-2. **Storage**: Profiles are saved in Google Drive's hidden [appDataFolder](https://developers.google.com/drive/api/guides/appdata) — invisible to the user, doesn't consume storage quota
-3. **Sync**: Settings, keybindings, and snippets are stored as base64-encoded content, preserving comments and formatting
+1. **Autenticação**: o fluxo OAuth 2.0 abre seu navegador para iniciar sessão com o Google.
+2. **Armazenamento**: os perfis são salvos na [appDataFolder](https://developers.google.com/drive/api/guides/appdata) oculta do Google Drive: ela não é visível à pessoa usuária e não consome a cota de armazenamento.
+3. **Sincronização**: configurações, atalhos e snippets são armazenados como conteúdo codificado em base64, preservando comentários e formatação.
 
-## Configuration
+## Configuração
 
-| Setting                             | Default | Description                        |
+| Configuração                             | Padrão | Descrição                        |
 | ----------------------------------- | ------- | ---------------------------------- |
-| `antigravitysync.excludeExtensions` | `[]`    | Extension IDs to exclude from sync |
+| `antigravitysync.excludeExtensions` | `[]`    | IDs de extensões a excluir da sincronização |
 
-## Important Notes
+## Observações importantes
 
-- Extension sync will prompt before installing/uninstalling extensions
-- A window reload may be required after pulling a profile
-- Tokens are stored securely via OS-level encryption (SecretStorage)
-- OAuth credentials are injected at build time from `.env` (not in source code)
+- A sincronização de extensões pede confirmação antes de instalar ou desinstalar extensões.
+- Talvez seja necessário recarregar a janela após baixar um perfil.
+- Os tokens são armazenados com segurança via criptografia do sistema operacional (SecretStorage).
+- As credenciais OAuth são injetadas de `.env` durante a compilação (não ficam no código-fonte).
 
-## Development
+## Desenvolvimento
 
-### Prerequisites
+### Pré-requisitos
 
 - Node.js 20+
-- [Antigravity IDE](https://www.antigravity.google/) (for testing)
-- Google OAuth Client ID ([Google Cloud Console](https://console.cloud.google.com/apis/credentials) → **Desktop app** type)
+- [Antigravity IDE](https://www.antigravity.google/) (para testes)
+- ID de cliente OAuth do Google ([Google Cloud Console](https://console.cloud.google.com/apis/credentials): tipo **Aplicativo para computador**)
 
-### Setup
+### Preparação
 
 ```bash
 git clone https://github.com/thotam/antigravity-sync.git
 cd antigravity-sync
 npm install
-cp .env.example .env   # Fill in your Google OAuth credentials
+cp .env.example .env   # Preencha suas credenciais OAuth do Google
 ```
 
-### Run Locally (Development)
+### Executar localmente (desenvolvimento)
 
 ```bash
-npm run compile                # Build once (development mode)
-npm run watch                  # Build & watch for changes
-antigravity --extensionDevelopmentPath="$(pwd)"  # Launch Antigravity with extension
+npm run compile                # Compila uma vez (modo de desenvolvimento)
+npm run watch                  # Compila e observa alterações
+antigravity --extensionDevelopmentPath="$(pwd)"  # Inicia o Antigravity com a extensão
 ```
 
-### Build Production
+### Compilação de produção
 
 ```bash
-npm run package                # Webpack production build
+npm run package                # Compilação de produção com Webpack
 ```
 
-### Package VSIX
+### Empacotar VSIX
 
 ```bash
 npx -y @vscode/vsce package --allow-missing-repository
-# Output: antigravity-sync-x.x.x.vsix
+# Saída: antigravity-sync-x.x.x.vsix
 ```
 
-### Publish to Open VSX
+### Publicar no Open VSX
 
 ```bash
 npx -y ovsx publish antigravity-sync-x.x.x.vsix -p <YOUR_OPENVSX_TOKEN>
 ```
 
-Get token from: [open-vsx.org/user-settings/tokens](https://open-vsx.org/user-settings/tokens)
+Obtenha o token em: [open-vsx.org/user-settings/tokens](https://open-vsx.org/user-settings/tokens)
 
-### Create GitHub Release
+### Criar uma release no GitHub
 
-1. Go to [Releases → New release](https://github.com/thotam/antigravity-sync/releases/new)
-2. Create tag: `vX.X.X`
-3. Title: `vX.X.X — Description`
-4. Upload `.vsix` file as asset
-5. Copy changelog entries as release notes
+1. Acesse [Releases: New release](https://github.com/thotam/antigravity-sync/releases/new).
+2. Crie a tag: `vX.X.X`.
+3. Título: `vX.X.X - Descrição`.
+4. Envie o arquivo `.vsix` como ativo.
+5. Copie as entradas do changelog como notas da release.
 
-### Project Structure
+### Estrutura do projeto
 
 ```
 src/
-├── extension.ts               # Entry point, single command, StatusBar
+├── extension.ts               # Ponto de entrada, comando único e barra de status
 ├── models/
-│   └── interfaces.ts          # TypeScript interfaces
+│   └── interfaces.ts          # Interfaces TypeScript
 ├── providers/
-│   └── dashboard-provider.ts  # Full webview panel dashboard
+│   └── dashboard-provider.ts  # Painel completo da Webview
 ├── webview/
-│   ├── dashboard.css          # Dashboard styles (modal, toast, cards)
-│   └── dashboard.js           # Dashboard logic (modal system, state rendering)
+│   ├── dashboard.css          # Estilos do painel (modal, notificações, cartões)
+│   └── dashboard.js           # Lógica do painel (sistema de modais, renderização de estado)
 └── core/
-    ├── google-auth.ts          # Google OAuth 2.0 flow
-    ├── google-drive.ts         # Google Drive API (appDataFolder)
-    ├── sync-controller.ts      # Read/write Antigravity config
-    └── logger.ts               # Output channel logging
+    ├── google-auth.ts          # Fluxo Google OAuth 2.0
+    ├── google-drive.ts         # API do Google Drive (appDataFolder)
+    ├── sync-controller.ts      # Leitura/escrita da configuração do Antigravity
+    └── logger.ts               # Registro no canal de saída
 ```
 
-## Release Notes
+## Notas de versão
 
 ### 0.6.0 (2026-03-08)
 
-- 📝 **Snippets Sync** — Sync user snippets across devices (base64-bundled)
-- 🔧 **Base64 Config Storage** — Settings and keybindings now preserve comments and whitespace
-- 🛡️ **Orphaned Panel Cleanup** — Dashboard auto-closes on extension restart
+- 📝 **Snippets Sync** - Sync user snippets across devices (base64-bundled)
+- 🔧 **Base64 Config Storage** - Settings and keybindings now preserve comments and whitespace
+- 🛡️ **Orphaned Panel Cleanup** - Dashboard auto-closes on extension restart
 - 🗑️ Removed `json5` dependency
-- ⚠️ **Breaking**: Profiles from v0.5.0 are incompatible — delete and recreate
+- ⚠️ **Breaking**: Profiles from v0.5.0 are incompatible - delete and recreate
 
 ### 0.5.0 (2026-03-08)
 
-- 📂 **Folder-based Profiles** — Each profile is a folder with `meta.json`, `settings.json`, `extensions.json`, `keybindings.json`
-- ☑️ **Sync Item Selection** — Choose Settings/Extensions/Keybindings per create/push/pull via checkbox modals
-- ⏳ **Sync Progress Modal** — Step-by-step progress display with animated bar during create/push/pull
-- 🧩 **Extension Sync Confirm** — In-webview modal listing extensions to install/remove
-- ⚡ **Progressive Loading** — Dashboard appears instantly, profiles and files load progressively
-- 📊 **Root Sync Meta** — Central `sync-meta.json` for fast profile listing (2 API calls vs N+1)
-- ⚠️ **Breaking**: Profiles from v0.4.0 are incompatible — delete and recreate
+- 📂 **Folder-based Profiles** - Each profile is a folder with `meta.json`, `settings.json`, `extensions.json`, `keybindings.json`
+- ☑️ **Sync Item Selection** - Choose Settings/Extensions/Keybindings per create/push/pull via checkbox modals
+- ⏳ **Sync Progress Modal** - Step-by-step progress display with animated bar during create/push/pull
+- 🧩 **Extension Sync Confirm** - In-webview modal listing extensions to install/remove
+- ⚡ **Progressive Loading** - Dashboard appears instantly, profiles and files load progressively
+- 📊 **Root Sync Meta** - Central `sync-meta.json` for fast profile listing (2 API calls vs N+1)
+- ⚠️ **Breaking**: Profiles from v0.4.0 are incompatible - delete and recreate
 
 ### 0.4.0 (2026-03-08)
 
-- 📂 **App Data Explorer** — Browse all files/folders in Google Drive appDataFolder
-- 🗂️ **Folder Navigation** — Double-click to drill down, breadcrumb trail, back button
-- 👁️ **File Preview** — View JSON and text file content in a formatted modal
-- 📄 **Pagination** — Prev/Next controls for large directories (20 items/page)
+- 📂 **App Data Explorer** - Browse all files/folders in Google Drive appDataFolder
+- 🗂️ **Folder Navigation** - Double-click to drill down, breadcrumb trail, back button
+- 👁️ **File Preview** - View JSON and text file content in a formatted modal
+- 📄 **Pagination** - Prev/Next controls for large directories (20 items/page)
 
 ### 0.3.0 (2026-03-08)
 
-- 🎨 **Full Dashboard UI** — Modern webview panel replaces command palette menu
-- 🪟 **Modal System** — Custom confirm/input modals with backdrop blur and animations
-- 🔔 **Toast Notifications** — Upgraded with close button, progress bar, and slide-in animation
-- 👤 **Google Avatar** — Display profile picture in header and account card
-- 🧹 **Simplified Commands** — Only `Open Dashboard` remains, all actions are in the panel
-- 🌍 **English UI** — All user-facing text translated to English for global accessibility
+- 🎨 **Full Dashboard UI** - Modern webview panel replaces command palette menu
+- 🪟 **Modal System** - Custom confirm/input modals with backdrop blur and animations
+- 🔔 **Toast Notifications** - Upgraded with close button, progress bar, and slide-in animation
+- 👤 **Google Avatar** - Display profile picture in header and account card
+- 🧹 **Simplified Commands** - Only `Open Dashboard` remains, all actions are in the panel
+- 🌍 **English UI** - All user-facing text translated to English for global accessibility
 
 ### 0.2.0 (2026-03-08)
 
-- 🔄 **Switched to Google Drive** — replaced GitHub Gists with Google Drive appDataFolder
-- 🔒 **Google OAuth 2.0** — secure login via browser, tokens encrypted by OS
-- 🔐 **Build-time credentials** — OAuth secrets injected via `.env` + DefinePlugin
-- 🎯 **Antigravity Only** — focused support with warning for other editors
-- 🗑️ **Removed GitHub dependency** — no longer requires GitHub account or token
+- 🔄 **Switched to Google Drive** - replaced GitHub Gists with Google Drive appDataFolder
+- 🔒 **Google OAuth 2.0** - secure login via browser, tokens encrypted by OS
+- 🔐 **Build-time credentials** - OAuth secrets injected via `.env` + DefinePlugin
+- 🎯 **Antigravity Only** - focused support with warning for other editors
+- 🗑️ **Removed GitHub dependency** - no longer requires GitHub account or token
 
 ### 0.1.0 (2026-03-08)
 
 - 🎉 Initial release with GitHub Gist storage
 
-## Contributing
+## Como contribuir
 
-Contributions are welcome! Please open an issue or submit a pull request on [GitHub](https://github.com/thotam/antigravity-sync).
+Contribuições são bem-vindas! Abra uma issue ou envie um pull request no [GitHub](https://github.com/thotam/antigravity-sync).
 
 ## Links
 
 - 📦 [Open VSX Registry](https://open-vsx.org/extension/thotam/antigravity-sync)
-- 🐛 [Report Issues](https://github.com/thotam/antigravity-sync/issues)
-- 📜 [Source Code](https://github.com/thotam/antigravity-sync)
+- 🐛 [Relatar problemas](https://github.com/thotam/antigravity-sync/issues)
+- 📜 [Código-fonte](https://github.com/thotam/antigravity-sync)
 
-## License
+## Licença
 
 [MIT](LICENSE.md)

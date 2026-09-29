@@ -3,43 +3,43 @@
 ## [0.7.4] - 2026-06-16
 
 ### Fixed
-- **Build Credentials** — Re-published to ensure Google OAuth credentials are correctly embedded in the package
+- **Build Credentials** - Re-published to ensure Google OAuth credentials are correctly embedded in the package
 
 ## [0.7.3] - 2026-06-15
 
 ### Fixed
-- **Config Path Collision** — Fixed a critical bug where `keybindingsPath` could be cached as the same file as `settingsPath`, causing keybindings data to overwrite settings when pulling a profile
-- **Cross-Platform Path Detection** — Added detection for Windows paths cached on Linux (and vice versa), automatically invalidating stale paths when switching operating systems
-- **Auto-Create Missing Config Files** — Config files (`settings.json`, `keybindings.json`) are now automatically created at the default path if they don't exist, instead of opening a file picker (which could lead to selecting the wrong file)
+- **Config Path Collision** - Fixed a critical bug where `keybindingsPath` could be cached as the same file as `settingsPath`, causing keybindings data to overwrite settings when pulling a profile
+- **Cross-Platform Path Detection** - Added detection for Windows paths cached on Linux (and vice versa), automatically invalidating stale paths when switching operating systems
+- **Auto-Create Missing Config Files** - Config files (`settings.json`, `keybindings.json`) are now automatically created at the default path if they don't exist, instead of opening a file picker (which could lead to selecting the wrong file)
 
 ## [0.7.2] - 2026-05-23
 
 ### Fixed
-- **Stale Config Path Cache** — Fixed a critical bug where cached config paths from legacy `Antigravity` (pre-2.0) were never invalidated after migrating to `Antigravity IDE` 2.0+, causing sync operations to silently read/write to the old directory instead of the new one
-- **Path Validation on Startup** — Added `isPathStale()` check during initialization to automatically detect and re-resolve config paths that point to the legacy `Antigravity/User/` directory or no longer exist on disk
+- **Stale Config Path Cache** - Fixed a critical bug where cached config paths from legacy `Antigravity` (pre-2.0) were never invalidated after migrating to `Antigravity IDE` 2.0+, causing sync operations to silently read/write to the old directory instead of the new one
+- **Path Validation on Startup** - Added `isPathStale()` check during initialization to automatically detect and re-resolve config paths that point to the legacy `Antigravity/User/` directory or no longer exist on disk
 
 ## [0.7.1] - 2026-05-21
 
 ### Fixed
-- **Google Client Credentials** — Resolved an issue where GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET were missing from the built package due to a missing environmental setup during the build process
+- **Google Client Credentials** - Resolved an issue where GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET were missing from the built package due to a missing environmental setup during the build process
 
 ## [0.7.0] - 2026-05-20
 
 ### Added
-- **Antigravity IDE 2.0+ Support** — Fully compatible with Google's major IDE update
+- **Antigravity IDE 2.0+ Support** - Fully compatible with Google's major IDE update
 
 ### Changed
-- **Config Storage Path** — Migrated config paths to `Antigravity IDE` instead of `Antigravity` to match version 2.0+ specifications
-- **IDE Detection** — Updated app recognition to support the new `"Antigravity IDE"` identifier exclusively
+- **Config Storage Path** - Migrated config paths to `Antigravity IDE` instead of `Antigravity` to match version 2.0+ specifications
+- **IDE Detection** - Updated app recognition to support the new `"Antigravity IDE"` identifier exclusively
 
 ## [0.6.0] - 2026-03-08
 
 ### Added
-- **Snippets Sync** — Sync user snippets (`User/snippets/`) across devices, bundled as base64-encoded content in `snippets.json`
-- **Orphaned Panel Cleanup** — Dashboard automatically closes when extension restarts, preventing non-functional UI
+- **Snippets Sync** - Sync user snippets (`User/snippets/`) across devices, bundled as base64-encoded content in `snippets.json`
+- **Orphaned Panel Cleanup** - Dashboard automatically closes when extension restarts, preventing non-functional UI
 
 ### Changed
-- **Base64 Config Storage** — Settings and keybindings now stored as raw base64 instead of parsed JSON, preserving comments, whitespace, and JSON5 syntax
+- **Base64 Config Storage** - Settings and keybindings now stored as raw base64 instead of parsed JSON, preserving comments, whitespace, and JSON5 syntax
 - Refactored `getConfigPaths()` to accept relative paths (files or directories) for reuse across config types
 
 ### Fixed
@@ -50,19 +50,19 @@
 - Unused `ISettings` and `IKeybinds` interfaces
 
 ### Breaking Changes
-- ⚠️ **Profiles created in v0.5.0 or earlier are incompatible** — Settings/keybindings format changed from parsed JSON to base64. Please delete old profiles and recreate them
+- ⚠️ **Profiles created in v0.5.0 or earlier are incompatible** - Settings/keybindings format changed from parsed JSON to base64. Please delete old profiles and recreate them
 
 ## [0.5.0] - 2026-03-08
 
 ### Added
-- **Folder-based Profile Storage** — Each profile is now stored as a dedicated folder containing `meta.json`, `settings.json`, `extensions.json`, and `keybindings.json`
-- **Sync Progress Modal** — Real-time progress display with step-by-step status (pending → active → done), animated progress bar, and auto-close on completion
-- **Extension Sync Confirm Modal** — In-webview modal listing extensions to install/remove before applying, replaces native VS Code dialog
-- **Sync Item Selection** — Choose which items to sync (Settings, Extensions, Keybindings) when creating, pushing, or pulling profiles via checkbox modals
-- **Extensible Sync Architecture** — `ISyncItem` registry pattern allowing easy addition of new sync data types in the future
-- **Root Sync Meta** — Central `sync-meta.json` at root appDataFolder for fast profile listing (2 API calls instead of N+1)
-- **Progressive UI Loading** — Dashboard UI appears immediately, profiles and app data load progressively with loading spinners
-- `FEATURES.md` — Comprehensive feature documentation
+- **Folder-based Profile Storage** - Each profile is now stored as a dedicated folder containing `meta.json`, `settings.json`, `extensions.json`, and `keybindings.json`
+- **Sync Progress Modal** - Real-time progress display with step-by-step status (pending → active → done), animated progress bar, and auto-close on completion
+- **Extension Sync Confirm Modal** - In-webview modal listing extensions to install/remove before applying, replaces native VS Code dialog
+- **Sync Item Selection** - Choose which items to sync (Settings, Extensions, Keybindings) when creating, pushing, or pulling profiles via checkbox modals
+- **Extensible Sync Architecture** - `ISyncItem` registry pattern allowing easy addition of new sync data types in the future
+- **Root Sync Meta** - Central `sync-meta.json` at root appDataFolder for fast profile listing (2 API calls instead of N+1)
+- **Progressive UI Loading** - Dashboard UI appears immediately, profiles and app data load progressively with loading spinners
+- `FEATURES.md` - Comprehensive feature documentation
 
 ### Changed
 - Profile storage restructured from single `.json` files to folder-based layout for better extensibility
@@ -73,12 +73,12 @@
 - App Data Explorer shows loading placeholder when fetching files
 
 ### Breaking Changes
-- ⚠️ **Profiles created in v0.4.0 or earlier are incompatible** — Please delete old profiles and recreate them
+- ⚠️ **Profiles created in v0.4.0 or earlier are incompatible** - Please delete old profiles and recreate them
 
 ## [0.4.0] - 2026-03-08
 
 ### Added
-- **App Data Explorer** — Browse all files and folders in Google Drive appDataFolder directly from the Dashboard
+- **App Data Explorer** - Browse all files and folders in Google Drive appDataFolder directly from the Dashboard
 - Folder navigation: double-click to drill down, breadcrumb trail, and back button
 - File preview modal for JSON and text-based files with formatted display
 - Paginated file listing with Prev/Next controls (20 items per page)
@@ -88,7 +88,7 @@
 ## [0.3.0] - 2026-03-08
 
 ### Added
-- Full webview Dashboard panel — replaces the old command palette menu
+- Full webview Dashboard panel - replaces the old command palette menu
 - Custom modal system (confirm and input dialogs) with backdrop blur, keyboard support, and animations
 - Upgraded toast notifications with close button, progress bar, and slide-in animation
 - Google profile avatar display in header and account card

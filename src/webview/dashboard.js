@@ -1,11 +1,11 @@
-// Dashboard JS — Runs inside webview
-// Modal system, toast notifications, state-driven rendering
+// JavaScript do painel: executa dentro da Webview
+// Sistema de modais, notificações e renderização orientada por estado
 
 (function () {
     // @ts-ignore
     const vscode = acquireVsCodeApi();
 
-    // === DOM Elements ===
+    // === Elementos do DOM ===
     const loginSection = document.getElementById("login-section");
     const dashboardSection = document.getElementById("dashboard-section");
     const headerUser = document.getElementById("header-user");
@@ -14,7 +14,7 @@
     const profileCount = document.getElementById("profile-count");
     const toastContainer = document.getElementById("toast-container");
 
-    // === Buttons ===
+    // === Botões ===
     const btnLogin = document.getElementById("btn-login");
     const btnLogout = document.getElementById("btn-logout");
     const btnCreateProfile = document.getElementById("btn-create-profile");
@@ -23,12 +23,12 @@
     const btnShowLogs = document.getElementById("btn-show-logs");
     const btnRefresh = document.getElementById("btn-refresh");
 
-    // === State ===
+    // === Estado ===
     let currentState = null;
-    let syncItemsConfig = [];  // From backend DEFAULT_SYNC_ITEMS
+    let syncItemsConfig = [];  // Vem de DEFAULT_SYNC_ITEMS no backend
 
     // ========================================
-    // MODAL SYSTEM
+    // SISTEMA DE MODAIS
     // ========================================
 
     /**
@@ -45,15 +45,15 @@
                 <div class="modal">
                     <div class="modal-header modal-header-${variant}">
                         <span class="codicon codicon-${opts.icon || "question"}"></span>
-                        <span>${escapeHtml(opts.title || "Confirm")}</span>
+                        <span>${escapeHtml(opts.title || "Confirmar")}</span>
                     </div>
-                    <div class="modal-body" style="white-space: pre-wrap;">${escapeHtml(opts.message || "Are you sure?")}</div>
+                    <div class="modal-body" style="white-space: pre-wrap;">${escapeHtml(opts.message || "Tem certeza?")}</div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" data-modal="cancel">
-                            ${escapeHtml(opts.cancelLabel || "Cancel")}
+                            ${escapeHtml(opts.cancelLabel || "Cancelar")}
                         </button>
                         <button class="btn ${variant === "danger" ? "btn-danger" : "btn-accent"}" data-modal="confirm">
-                            ${escapeHtml(opts.confirmLabel || "Confirm")}
+                            ${escapeHtml(opts.confirmLabel || "Confirmar")}
                         </button>
                     </div>
                 </div>
@@ -91,7 +91,7 @@
                 <div class="modal">
                     <div class="modal-header modal-header-accent">
                         <span class="codicon codicon-${opts.icon || "edit"}"></span>
-                        <span>${escapeHtml(opts.title || "Input")}</span>
+                        <span>${escapeHtml(opts.title || "Entrada")}</span>
                     </div>
                     <div class="modal-body">
                         ${escapeHtml(opts.message || "")}
@@ -101,7 +101,7 @@
                         <div class="modal-input-error" id="modal-input-error"></div>
                         ${hasSyncItems ? `
                         <div class="sync-item-list">
-                            <div class="sync-item-label">Sync Items</div>
+                            <div class="sync-item-label">Itens de sincronização</div>
                             ${opts.syncItems.map(item => `
                                 <label class="sync-item">
                                     <input type="checkbox" value="${escapeAttr(item.key)}" ${item.enabled !== false ? 'checked' : ''} />
@@ -113,10 +113,10 @@
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" data-modal="cancel">
-                            ${escapeHtml(opts.cancelLabel || "Cancel")}
+                            ${escapeHtml(opts.cancelLabel || "Cancelar")}
                         </button>
                         <button class="btn btn-accent" data-modal="confirm">
-                            ${escapeHtml(opts.confirmLabel || "Create")}
+                            ${escapeHtml(opts.confirmLabel || "Criar")}
                         </button>
                     </div>
                 </div>
@@ -178,7 +178,7 @@
     }
 
     /**
-     * Sync Select Modal — confirm with checkbox selection for push/pull
+     * Sync Select Modal - confirm with checkbox selection for push/pull
      * @param {object} opts - { title, message, icon, syncItems, confirmLabel, cancelLabel, variant }
      * @returns {Promise<string[]|null>} - selected sync keys or null if cancelled
      */
@@ -191,12 +191,12 @@
                 <div class="modal">
                     <div class="modal-header modal-header-${variant}">
                         <span class="codicon codicon-${opts.icon || "sync"}"></span>
-                        <span>${escapeHtml(opts.title || "Sync")}</span>
+                        <span>${escapeHtml(opts.title || "Sincronizar")}</span>
                     </div>
                     <div class="modal-body">
                         <p style="margin:0 0 4px">${escapeHtml(opts.message || "")}</p>
                         <div class="sync-item-list">
-                            <div class="sync-item-label">Sync Items</div>
+                            <div class="sync-item-label">Itens de sincronização</div>
                             ${(opts.syncItems || []).map(item => `<label class="sync-item">
                                     <input type="checkbox" value="${escapeAttr(item.key)}" ${item.enabled !== false ? 'checked' : ''} />
                                     <span class="codicon codicon-${item.icon}"></span>
@@ -206,10 +206,10 @@
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" data-modal="cancel">
-                            ${escapeHtml(opts.cancelLabel || "Cancel")}
+                            ${escapeHtml(opts.cancelLabel || "Cancelar")}
                         </button>
                         <button class="btn ${variant === "danger" ? "btn-danger" : "btn-accent"}" data-modal="confirm">
-                            ${escapeHtml(opts.confirmLabel || "Confirm")}
+                            ${escapeHtml(opts.confirmLabel || "Confirmar")}
                         </button>
                     </div>
                 </div>
@@ -250,7 +250,7 @@
     }
 
     // ========================================
-    // TOAST SYSTEM (upgraded)
+    // SISTEMA DE NOTIFICAÇÕES (aprimorado)
     // ========================================
 
     function showToast(level, message, duration) {
@@ -266,18 +266,18 @@
                 <span class="codicon codicon-${icon}"></span>
                 <span>${escapeHtml(message)}</span>
             </div>
-            <button class="toast-close" title="Dismiss">
+            <button class="toast-close" title="Dispensar">
                 <span class="codicon codicon-close"></span>
             </button>
             <div class="toast-progress" style="animation-duration: ${duration}ms;"></div>
         `;
 
-        // Close button
+        // Botão de fechar
         toast.querySelector(".toast-close").addEventListener("click", () => dismissToast(toast));
 
         toastContainer.appendChild(toast);
 
-        // Auto-dismiss
+        // Dispensa automática
         const timer = setTimeout(() => dismissToast(toast), duration);
         toast._timer = timer;
     }
@@ -291,7 +291,7 @@
     }
 
     // ========================================
-    // EVENT LISTENERS
+    // OUVINTES DE EVENTOS
     // ========================================
 
     btnLogin.addEventListener("click", () => {
@@ -300,10 +300,10 @@
 
     btnLogout.addEventListener("click", async () => {
         const confirmed = await showConfirm({
-            title: "Sign Out",
-            message: "Are you sure you want to sign out from Google?",
+            title: "Encerrar sessão",
+            message: "Tem certeza de que deseja encerrar a sessão do Google?",
             icon: "sign-out",
-            confirmLabel: "Sign Out",
+            confirmLabel: "Encerrar sessão",
             variant: "danger",
         });
         if (confirmed) {
@@ -313,15 +313,15 @@
 
     btnCreateProfile.addEventListener("click", async () => {
         const result = await showInput({
-            title: "Create Profile",
-            message: "Enter a name for the new sync profile.",
+            title: "Criar perfil",
+            message: "Informe um nome para o novo perfil de sincronização.",
             icon: "add",
-            placeholder: "e.g. work, home, laptop",
-            confirmLabel: "Create",
+            placeholder: "ex.: trabalho, casa, notebook",
+            confirmLabel: "Criar",
             syncItems: syncItemsConfig,
             validate: (val) => {
-                if (!val) return "Profile name is required";
-                if (!/^[a-zA-Z0-9_-]+$/.test(val)) return "Only letters, numbers, hyphens, underscores";
+                if (!val) return "O nome do perfil é obrigatório";
+                if (!/^[a-zA-Z0-9_-]+$/.test(val)) return "Use apenas letras, números, hífens e sublinhados";
                 return null;
             },
         });
@@ -347,7 +347,7 @@
         vscode.postMessage({ command: "refresh" });
     });
 
-    // === Profile Actions (Event Delegation) ===
+    // === Ações do perfil (delegação de eventos) ===
     profilesList.addEventListener("click", async (e) => {
         const btn = e.target.closest("[data-action]");
         if (!btn) return;
@@ -358,18 +358,18 @@
 
         switch (action) {
             case "pull": {
-                // Only show items present in meta.syncKeys of the profile
+                // Mostra apenas os itens presentes em meta.syncKeys do perfil
                 const profile = currentState?.profiles?.find(p => p.fileName === fileName);
                 const metaKeys = profile?.syncKeys;
                 const items = metaKeys
                     ? syncItemsConfig.filter(i => metaKeys.includes(i.key))
                     : syncItemsConfig;
                 const syncKeys = await showSyncSelect({
-                    title: "Pull Profile",
-                    message: `Pull settings from "${profileName}" to local?`,
+                    title: "Baixar perfil",
+                    message: `Baixar as configurações de "${profileName}" para este dispositivo?`,
                     icon: "cloud-download",
                     syncItems: items,
-                    confirmLabel: "Pull",
+                    confirmLabel: "Baixar",
                 });
                 if (syncKeys) {
                     vscode.postMessage({ command: "pullProfile", fileName, syncKeys });
@@ -377,7 +377,7 @@
                 break;
             }
             case "push": {
-                // Pre-check checkboxes matching meta.syncKeys
+                // Marca previamente as caixas que correspondem a meta.syncKeys
                 const profile = currentState?.profiles?.find(p => p.fileName === fileName);
                 const metaKeys = profile?.syncKeys;
                 const items = syncItemsConfig.map(i => ({
@@ -385,11 +385,11 @@
                     enabled: metaKeys ? metaKeys.includes(i.key) : i.enabled,
                 }));
                 const syncKeys = await showSyncSelect({
-                    title: "Push Profile",
-                    message: `Push current settings to "${profileName}"?`,
+                    title: "Enviar perfil",
+                    message: `Enviar as configurações atuais para "${profileName}"?`,
                     icon: "cloud-upload",
                     syncItems: items,
-                    confirmLabel: "Push",
+                    confirmLabel: "Enviar",
                 });
                 if (syncKeys) {
                     vscode.postMessage({ command: "updateProfile", fileName, syncKeys });
@@ -398,10 +398,10 @@
             }
             case "delete": {
                 const confirmed = await showConfirm({
-                    title: "Delete Profile",
-                    message: `This will permanently delete "${profileName}" from Google Drive. This action cannot be undone.`,
+                    title: "Excluir perfil",
+                    message: `Isso excluirá permanentemente "${profileName}" do Google Drive. Esta ação não pode ser desfeita.`,
                     icon: "trash",
-                    confirmLabel: "Delete",
+                    confirmLabel: "Excluir",
                     variant: "danger",
                 });
                 if (confirmed) {
@@ -413,7 +413,7 @@
     });
 
     // ========================================
-    // APP DATA EXPLORER
+    // EXPLORADOR DE DADOS DO APLICATIVO
     // ========================================
 
     const appdataSection = document.getElementById("appdata-section");
@@ -424,28 +424,28 @@
     const btnRefreshAppdata = document.getElementById("btn-refresh-appdata");
     const btnBackAppdata = document.getElementById("btn-back-appdata");
 
-    // Folder navigation state
+    // Estado da navegação entre pastas
     let currentFolderId = null;
     let folderStack = []; // [{ id, name }, ...]
     let previewPending = false; // Prevent double preview
 
-    // Pagination state
+    // Estado da paginação
     let pageTokenStack = []; // previous page tokens
     let currentPageToken = null;
     let nextPageToken = null;
     let currentPage = 1;
 
     function fetchAppDataFiles(folderId, folderName, pageToken) {
-        // Show loading state
+        // Exibe o estado de carregamento
         btnRefreshAppdata.classList.add("spinning");
         appdataEmpty.style.display = "none";
         appdataTableWrapper.style.display = "none";
-        // Show loading placeholder
+        // Exibe o espaço reservado de carregamento
         let loadingEl = appdataTableWrapper.parentNode.querySelector(".appdata-loading");
         if (!loadingEl) {
             loadingEl = document.createElement("div");
             loadingEl.className = "appdata-loading profiles-loading";
-            loadingEl.innerHTML = `<span class="spinner"></span><span>Loading files...</span>`;
+            loadingEl.innerHTML = `<span class="spinner"></span><span>Carregando arquivos...</span>`;
             appdataTableWrapper.parentNode.insertBefore(loadingEl, appdataTableWrapper);
         }
         loadingEl.style.display = "";
@@ -484,7 +484,7 @@
             folderStack = [];
             btnBackAppdata.style.display = "none";
             pageTokenStack = []; currentPageToken = null; nextPageToken = null; currentPage = 1;
-            fetchAppDataFiles(null, "Root", null);
+            fetchAppDataFiles(null, "Raiz", null);
         } else {
             const target = folderStack[index];
             if (!target) return;
@@ -497,22 +497,22 @@
     }
 
     function getCurrentFolderName() {
-        if (!currentFolderId) return "Root";
+        if (!currentFolderId) return "Raiz";
         if (folderStack.length > 0) {
             const last = folderStack[folderStack.length - 1];
             // The current name is actually what we navigated into
-            return "Folder";
+            return "Pasta";
         }
-        return "Root";
+        return "Raiz";
     }
 
     // Render breadcrumb
     function renderBreadcrumb(currentName) {
-        let html = `<span class="breadcrumb-item" data-bc-index="0">Root</span>`;
+        let html = `<span class="breadcrumb-item" data-bc-index="0">Raiz</span>`;
         folderStack.forEach((f, i) => {
             if (f.id !== null) {
                 html += `<span class="breadcrumb-sep codicon codicon-chevron-right"></span>`;
-                html += `<span class="breadcrumb-item" data-bc-index="${i + 1}">${escapeHtml(f.name || "Folder")}</span>`;
+                html += `<span class="breadcrumb-item" data-bc-index="${i + 1}">${escapeHtml(f.name || "Pasta")}</span>`;
             }
         });
         if (currentFolderId) {
@@ -521,11 +521,11 @@
         } else {
             // Root is active
             const rootSpan = html.split("data-bc-index=\"0\">")[0];
-            html = `<span class="breadcrumb-item active" data-bc-index="0">Root</span>`;
+            html = `<span class="breadcrumb-item active" data-bc-index="0">Raiz</span>`;
             folderStack.forEach((f, i) => {
                 if (f.id !== null) {
                     html += `<span class="breadcrumb-sep codicon codicon-chevron-right"></span>`;
-                    html += `<span class="breadcrumb-item" data-bc-index="${i + 1}">${escapeHtml(f.name || "Folder")}</span>`;
+                    html += `<span class="breadcrumb-item" data-bc-index="${i + 1}">${escapeHtml(f.name || "Pasta")}</span>`;
                 }
             });
         }
@@ -542,11 +542,11 @@
 
     // MimeType → human-readable label
     function mimeLabel(mime) {
-        if (mime === "application/vnd.google-apps.folder") return "Folder";
+        if (mime === "application/vnd.google-apps.folder") return "Pasta";
         if (mime === "application/json" || (mime && mime.includes("json"))) return "JSON";
-        if (mime && mime.startsWith("text/")) return "Text";
-        if (mime && mime.startsWith("image/")) return "Image";
-        return "File";
+        if (mime && mime.startsWith("text/")) return "Texto";
+        if (mime && mime.startsWith("image/")) return "Imagem";
+        return "Arquivo";
     }
 
     // MimeType → badge class
@@ -559,9 +559,9 @@
 
     // Format file size
     function formatSize(bytes) {
-        if (!bytes) return "—";
+        if (!bytes) return "-";
         const num = parseInt(bytes, 10);
-        if (isNaN(num)) return "—";
+        if (isNaN(num)) return "-";
         if (num < 1024) return `${num} B`;
         if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`;
         return `${(num / (1024 * 1024)).toFixed(1)} MB`;
@@ -614,7 +614,7 @@
 
         appdataList.innerHTML = sorted.map((f) => {
             const isFolder = f.mimeType === "application/vnd.google-apps.folder";
-            const modified = f.modifiedTime ? formatDate(f.modifiedTime) : "—";
+            const modified = f.modifiedTime ? formatDate(f.modifiedTime) : "-";
             const icon = mimeIcon(f.mimeType);
             const label = mimeLabel(f.mimeType);
             const badgeClass = mimeBadgeClass(f.mimeType);
@@ -627,11 +627,11 @@
                         ${escapeHtml(f.name)}
                     </td>
                     <td><span class="type-badge ${badgeClass}">${label}</span></td>
-                    <td class="appdata-size">${isFolder ? "—" : formatSize(f.size)}</td>
+                    <td class="appdata-size">${isFolder ? "-" : formatSize(f.size)}</td>
                     <td class="appdata-date">${modified}</td>
                     <td class="appdata-actions">
                         ${!isFolder && isPreviewable(f.mimeType) ? `
-                            <button class="btn-icon" data-preview-id="${escapeAttr(f.id)}" data-preview-name="${escapeAttr(f.name)}" title="Preview">
+                            <button class="btn-icon" data-preview-id="${escapeAttr(f.id)}" data-preview-name="${escapeAttr(f.name)}" title="Visualizar">
                                 <span class="codicon codicon-eye"></span>
                             </button>
                         ` : ""}
@@ -668,7 +668,7 @@
                     <pre class="file-preview-content"><code>${escapeHtml(formatted)}</code></pre>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" data-modal="cancel">Close</button>
+                    <button class="btn btn-secondary" data-modal="cancel">Fechar</button>
                 </div>
             </div>
         `;
@@ -704,11 +704,11 @@
 
         paginationBar.innerHTML = `
             <button class="btn btn-secondary btn-sm" id="btn-page-prev" ${!hasPrev ? "disabled" : ""}>
-                <span class="codicon codicon-chevron-left"></span> Prev
+                <span class="codicon codicon-chevron-left"></span> Anterior
             </button>
-            <span class="page-indicator">Page ${currentPage}</span>
+            <span class="page-indicator">Página ${currentPage}</span>
             <button class="btn btn-secondary btn-sm" id="btn-page-next" ${!nextPageToken ? "disabled" : ""}>
-                Next <span class="codicon codicon-chevron-right"></span>
+                Próxima <span class="codicon codicon-chevron-right"></span>
             </button>
         `;
 
@@ -771,9 +771,9 @@
     });
 
     // ========================================
-    // MESSAGE HANDLER
+    // TRATADOR DE MENSAGENS
     // ========================================
-    // SYNC PROGRESS MODAL
+    // MODAL DE PROGRESSO DA SINCRONIZAÇÃO
     // ========================================
 
     let syncModal = null;
@@ -800,12 +800,12 @@
                 <div class="sync-progress-bar-container">
                     <div class="sync-progress-bar" id="sync-progress-bar"></div>
                 </div>
-                <div class="sync-progress-text" id="sync-progress-text">Preparing...</div>
+                <div class="sync-progress-text" id="sync-progress-text">Preparando...</div>
             </div>
         `;
         document.body.appendChild(overlay);
         overlay.addEventListener("click", (e) => {
-            // Only allow closing when sync has completed
+            // Permite fechar somente quando a sincronização for concluída
             if (e.target === overlay && syncCompleted) { closeSyncProgress(); }
         });
         requestAnimationFrame(() => overlay.classList.add("visible"));
@@ -855,10 +855,10 @@
         if (bar) { bar.style.width = `${pct}%`; }
 
         const text = syncModal.querySelector("#sync-progress-text");
-        if (text) { text.textContent = `${done} / ${total} completed`; }
+        if (text) { text.textContent = `${done} / ${total} concluídos`; }
     }
 
-    /** Mark sync as complete — show done state */
+    /** Mark sync as complete - show done state */
     function markSyncDone() {
         syncCompleted = true;
         if (!syncModal) { return; }
@@ -915,19 +915,19 @@
             case "askExtensionSync": {
                 const installList = (msg.toInstall || []);
                 const deleteList = (msg.toDelete || []);
-                let details = `Sync will install ${installList.length} and remove ${deleteList.length} extensions.\n\n`;
+                let details = `A sincronização instalará ${installList.length} e removerá ${deleteList.length} extensões.\n\n`;
                 if (installList.length > 0) {
-                    details += `📥 Install:\n${installList.map(id => `  • ${id}`).join("\n")}\n\n`;
+                    details += `📥 Instalar:\n${installList.map(id => `  • ${id}`).join("\n")}\n\n`;
                 }
                 if (deleteList.length > 0) {
-                    details += `🗑️ Remove:\n${deleteList.map(id => `  • ${id}`).join("\n")}`;
+                    details += `🗑️ Remover:\n${deleteList.map(id => `  • ${id}`).join("\n")}`;
                 }
                 showConfirm({
-                    title: "Extension Sync",
+                    title: "Sincronização de extensões",
                     message: details,
                     icon: "extensions",
-                    confirmLabel: "Apply",
-                    cancelLabel: "Skip",
+                    confirmLabel: "Aplicar",
+                    cancelLabel: "Pular",
                     variant: "accent",
                 }).then((confirmed) => {
                     if (confirmed) {
@@ -937,7 +937,7 @@
                             toDelete: deleteList,
                         });
                     } else {
-                        // Skip extension sync — still ask reload for settings/keybindings
+                        // Pula a sincronização de extensões: ainda solicita recarregamento para configurações/atalhos
                         vscode.postMessage({ command: "reloadWindow" });
                     }
                 });
@@ -945,11 +945,11 @@
             }
             case "askReload":
                 showConfirm({
-                    title: "Reload Required",
-                    message: "Profile applied! Reload the window to see all changes?",
+                    title: "Recarregamento necessário",
+                    message: "Perfil aplicado! Recarregar a janela para ver todas as alterações?",
                     icon: "refresh",
-                    confirmLabel: "Reload Now",
-                    cancelLabel: "Later",
+                    confirmLabel: "Recarregar agora",
+                    cancelLabel: "Mais tarde",
                     variant: "accent",
                 }).then((confirmed) => {
                     if (confirmed) {
@@ -958,13 +958,13 @@
                 });
                 break;
             case "appDataFiles":
-                renderAppDataFiles(msg.files || [], msg.folderName || "Root", msg.nextPageToken);
+                renderAppDataFiles(msg.files || [], msg.folderName || "Raiz", msg.nextPageToken);
                 break;
             case "filePreview":
                 showFilePreview(msg.fileName, msg.content);
                 break;
             case "profiles":
-                // Phase 2: Update profiles after loading completes
+                // Fase 2: atualiza os perfis após concluir o carregamento
                 if (currentState) {
                     currentState.profiles = msg.data || [];
                 }
@@ -975,7 +975,7 @@
     });
 
     // ========================================
-    // RENDER FUNCTIONS
+    // FUNÇÕES DE RENDERIZAÇÃO
     // ========================================
 
     /** Render entire UI based on state */
@@ -1023,7 +1023,7 @@
             profilesList.innerHTML = `
                 <div class="profiles-loading">
                     <span class="spinner"></span>
-                    <span>Loading profiles...</span>
+                    <span>Carregando perfis...</span>
                 </div>
             `;
             profilesEmpty.style.display = "none";
@@ -1052,7 +1052,7 @@
 
         profilesList.innerHTML = profiles
             .map((p) => {
-                const modified = p.modifiedTime ? formatDate(p.modifiedTime) : "Unknown";
+                const modified = p.modifiedTime ? formatDate(p.modifiedTime) : "Desconhecido";
                 return `
                 <div class="profile-card">
                     <div class="profile-name">
@@ -1066,19 +1066,19 @@
                     <div class="profile-actions">
                         <button class="btn btn-primary btn-sm"
                                 data-action="pull" data-file="${escapeAttr(p.fileName)}"
-                                title="Download profile to this device">
+                                title="Baixar o perfil para este dispositivo">
                             <span class="codicon codicon-cloud-download"></span>
-                            Pull
+                            Baixar
                         </button>
                         <button class="btn btn-secondary btn-sm"
                                 data-action="push" data-file="${escapeAttr(p.fileName)}"
-                                title="Upload current config to this profile">
+                                title="Enviar a configuração atual para este perfil">
                             <span class="codicon codicon-cloud-upload"></span>
-                            Push
+                            Enviar
                         </button>
                         <button class="btn btn-danger btn-sm"
                                 data-action="delete" data-file="${escapeAttr(p.fileName)}"
-                                title="Delete profile">
+                                title="Excluir perfil">
                             <span class="codicon codicon-trash"></span>
                         </button>
                     </div>
@@ -1108,9 +1108,9 @@
         if (action === "login") {
             btnLogin.disabled = loading;
             if (loading) {
-                btnLogin.innerHTML = '<span class="spinner"></span> Signing in...';
+                btnLogin.innerHTML = '<span class="spinner"></span> Iniciando sessão...';
             } else {
-                btnLogin.innerHTML = '<span class="codicon codicon-sign-in"></span> Sign in with Google';
+                btnLogin.innerHTML = '<span class="codicon codicon-sign-in"></span> Iniciar sessão com o Google';
             }
         }
 
@@ -1136,7 +1136,7 @@
     function formatDate(isoString) {
         try {
             const d = new Date(isoString);
-            return d.toLocaleDateString("en-US", {
+            return d.toLocaleDateString("pt-BR", {
                 day: "2-digit",
                 month: "short",
                 year: "numeric",

@@ -1,5 +1,5 @@
-// Entry point — Antigravity Sync Extension (Google Drive)
-// Dashboard-only UI, StatusBar, initialize controller & Google Drive service
+// Ponto de entrada da extensão Antigravity Sync (Google Drive)
+// Interface exclusiva do painel, StatusBar, inicialização do controlador e serviço do Google Drive
 
 import * as vscode from "vscode";
 import Logger from "./core/logger";
@@ -13,27 +13,27 @@ let statusBarItem: vscode.StatusBarItem;
 
 export async function activate(ctx: vscode.ExtensionContext) {
     try {
-        // Initialize Logger
+        // Inicializa o Logger
         logger = new Logger();
-        logger.info("Extension activation started");
+        logger.info("Ativação da extensão iniciada");
 
-        // Chỉ hỗ trợ Antigravity IDE 2.0+
+        // Compatível somente com Antigravity IDE 2.0+
         if (vscode.env.appName !== "Antigravity IDE") {
             vscode.window.showWarningMessage(
-                `Antigravity Sync is designed exclusively for Antigravity IDE. ` +
-                `You are currently using "${vscode.env.appName}". ` +
-                `Some features may not work correctly.`,
-                "Continue Anyway",
-                "Dismiss"
+                `Antigravity Sync foi projetado exclusivamente para o Antigravity IDE. ` +
+                `Você está usando "${vscode.env.appName}". ` +
+                `Alguns recursos podem não funcionar corretamente.`,
+                "Continuar mesmo assim",
+                "Fechar"
             ).then((choice) => {
-                if (choice !== "Continue Anyway") {
+                if (choice !== "Continuar mesmo assim") {
                     deactivate(true);
                 }
             });
-            logger.warn(`Non-Antigravity IDE detected: ${vscode.env.appName}`);
+            logger.warn(`IDE diferente do Antigravity detectada: ${vscode.env.appName}`);
         }
 
-        // Initialize StatusBar
+        // Inicializa a barra de status
         statusBarItem = vscode.window.createStatusBarItem(
             vscode.StatusBarAlignment.Right,
             100
@@ -41,11 +41,11 @@ export async function activate(ctx: vscode.ExtensionContext) {
         statusBarItem.command = "antigravitysync.showDashboard";
         statusBarItem.show();
 
-        // Initialize SyncController
+        // Inicializa o SyncController
         const controller = await SyncController.initialize(logger, ctx);
         if (!controller) {
             logger.error(
-                "Failed to initialize Antigravity Sync",
+                "Falha ao inicializar o Antigravity Sync",
                 "activate",
                 true
             );
@@ -53,52 +53,52 @@ export async function activate(ctx: vscode.ExtensionContext) {
             return;
         }
 
-        // Initialize Google Auth
+        // Inicializa a autenticação do Google
         const auth = new GoogleAuth(logger, ctx);
 
-        // Initialize Google Drive Service
+        // Inicializa o serviço do Google Drive
         const drive = new GoogleDriveService(auth, logger);
 
-        // Initialize Dashboard Provider
+        // Inicializa o provedor do painel
         const dashboard = new DashboardProvider(ctx, auth, drive, controller, logger);
 
-        // Update StatusBar based on auth state
+        // Atualiza a barra de status com base no estado de autenticação
         async function updateStatusBar() {
             const authenticated = await auth.isAuthenticated();
             if (authenticated) {
                 const info = await auth.getAccountInfo();
                 statusBarItem.text = `$(sync) ${info?.email || "Antigravity Sync"}`;
-                statusBarItem.tooltip = `Antigravity Sync: Logged in — Click to open Dashboard`;
+                statusBarItem.tooltip = "Antigravity Sync: sessão iniciada - clique para abrir o painel";
             } else {
-                statusBarItem.text = "$(sync~spin) Antigravity Sync — Login Required";
-                statusBarItem.tooltip = "Click to open Dashboard and sign in";
+                statusBarItem.text = "$(sync~spin) Antigravity Sync - início de sessão necessário";
+                statusBarItem.tooltip = "Clique para abrir o painel e iniciar sessão";
             }
         }
         await updateStatusBar();
 
-        // ===== Commands =====
+        // ===== Comandos =====
 
         const ShowDashboard = vscode.commands.registerCommand(
             "antigravitysync.showDashboard",
             () => { dashboard.show(); }
         );
 
-        // Register all commands
+        // Registra todos os comandos
         ctx.subscriptions.push(
             ShowDashboard,
             statusBarItem, logger
         );
 
-        // Close orphaned dashboard panels from previous extension session
+        // Fecha painéis órfãos da sessão anterior da extensão
         closeOrphanedPanels();
 
-        logger.info("Extension activated successfully", false, "activate");
+        logger.info("Extensão ativada com sucesso", false, "activate");
     } catch (error) {
         logger.error(`${error}`, "activate", false, error);
     }
 }
 
-/** Close orphaned dashboard tabs that survive extension restart */
+/** Fecha abas órfãs do painel que permanecem após reiniciar a extensão */
 function closeOrphanedPanels() {
     for (const group of vscode.window.tabGroups.all) {
         for (const tab of group.tabs) {
@@ -106,8 +106,8 @@ function closeOrphanedPanels() {
                 const viewType = (tab.input as any).viewType as string;
                 if (viewType?.includes("antigravitysync.dashboard")) {
                     vscode.window.tabGroups.close(tab).then(
-                        () => logger.info("Closed orphaned dashboard tab"),
-                        () => { /* ignore */ }
+                        () => logger.info("Aba órfã do painel fechada"),
+                        () => { /* ignora */ }
                     );
                 }
             }
@@ -115,7 +115,7 @@ function closeOrphanedPanels() {
     }
 }
 
-/** Helper — ensure user is logged in before action */
+/** Auxiliar: garante que a pessoa usuária tenha iniciado sessão antes da ação */
 export async function ensureAuth(auth: GoogleAuth): Promise<boolean> {
     if (await auth.isAuthenticated()) {
         return true;
@@ -124,7 +124,7 @@ export async function ensureAuth(auth: GoogleAuth): Promise<boolean> {
 }
 
 export function deactivate(preserveLogger: boolean = false) {
-    logger?.info("Extension deactivated");
+    logger?.info("Extensão desativada");
     statusBarItem?.dispose();
     if (!preserveLogger) {
         logger?.dispose();

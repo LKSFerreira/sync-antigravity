@@ -1,7 +1,7 @@
 {
     "name": "antigravity-sync",
     "displayName": "Antigravity Sync",
-    "description": "Sync your Antigravity settings, extensions, keybindings, and snippets across devices using Google Drive",
+    "description": "Sincronize configurações, extensões, atalhos e snippets do Antigravity entre dispositivos usando o Google Drive",
     "version": "0.7.4",
     "publisher": "thotam",
     "icon": "images/icon.png",
@@ -34,7 +34,7 @@
         "commands": [
             {
                 "command": "antigravitysync.showDashboard",
-                "title": "Open Dashboard",
+                "title": "Abrir painel",
                 "category": "Antigravity Sync"
             }
         ],
@@ -44,7 +44,7 @@
                 "antigravitysync.excludeExtensions": {
                     "type": "array",
                     "default": [],
-                    "description": "Extension IDs to exclude from sync"
+                    "description": "IDs de extensões a excluir da sincronização"
                 }
             }
         }
