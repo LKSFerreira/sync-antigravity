@@ -1,7 +1,7 @@
 // SyncController: lê/escreve arquivos de configuração do Antigravity IDE
 // Compatível somente com Antigravity IDE 2.0+
 
-import { readFile, readdir, mkdir, writeFile } from "fs/promises";
+import { readFile, readdir, mkdir, rename, unlink, writeFile } from "fs/promises";
 import * as os from "os";
 import * as path from "path";
 import {
@@ -14,6 +14,19 @@ import {
     workspace,
 } from "vscode";
 import { IProfile, ISyncItem } from "../models/interfaces";
+import {
+    createGlobalLayoutDocument,
+    createLayoutProfile,
+    createWorkspaceLayout,
+    ILayoutProfile,
+    isAllowedGlobalLayoutKey,
+    isAllowedWorkspaceLayoutEntry,
+} from "../models/layout-profile";
+import {
+    applyLayoutEntries,
+    readGlobalLayoutEntries,
+    readWorkspaceLayoutEntries,
+} from "./layout-state-database";
 import Logger from "./logger";
 
 export default class SyncController {
@@ -220,6 +233,9 @@ export default class SyncController {
                 case "snippets":
                     data.snippets = await this.readSnippets();
                     break;
+                case "layout":
+                    data.layout = await this.readLayoutProfile();
+                    break;
                 default:
                     break;
             }
@@ -249,6 +265,12 @@ export default class SyncController {
                 case "snippets": {
                     if (profile.data.snippets) {
                         await this.writeSnippets(profile.data.snippets);
+                    }
+                    break;
+                }
+                case "layout": {
+                    if (profile.data.layout) {
+                        await this.restoreLayoutProfile(profile.data.layout);
                     }
                     break;
                 }
@@ -301,6 +323,180 @@ export default class SyncController {
             .filter((ext: Extension<any>) => !ext.packageJSON.isBuiltin)
             .map((ext: Extension<any>) => ext.id)
             .filter((id) => !excludeList.includes(id));
+    }
+
+    // ===== Layout helpers =====
+
+    /** Lê o layout global e, quando houver, o layout do workspace aberto. */
+    private async readLayoutProfile(): Promise<ILayoutProfile> {
+        const userDataPath = this.getUserDataPath();
+        const globalEntries = await readGlobalLayoutEntries(
+            path.join(userDataPath, "globalStorage", "state.vscdb")
+        );
+        const global = createGlobalLayoutDocument(globalEntries);
+        const workspace = await this.findActiveWorkspaceStorage(userDataPath);
+
+        if (!workspace) {
+            return createLayoutProfile(global);
+        }
+
+        const entries = await readWorkspaceLayoutEntries(workspace.databasePath);
+        return createLayoutProfile(
+            global,
+            createWorkspaceLayout(workspace.id, workspace.label, entries)
+        );
+    }
+
+    /** Restaura o layout em bancos separados, com cópias de segurança e rollback local. */
+    private async restoreLayoutProfile(layout: unknown): Promise<void> {
+        const profile = this.parseLayoutProfile(layout);
+        const userDataPath = this.getUserDataPath();
+        const changes: Array<{
+            name: string;
+            databasePath: string;
+            original: Buffer;
+            updated: Uint8Array;
+        }> = [];
+        const globalDatabasePath = path.join(userDataPath, "globalStorage", "state.vscdb");
+
+        changes.push({
+            name: "global-state.vscdb",
+            databasePath: globalDatabasePath,
+            original: await readFile(globalDatabasePath),
+            updated: await applyLayoutEntries(
+                globalDatabasePath,
+                profile.global.entries,
+                (entry) => isAllowedGlobalLayoutKey(entry.key)
+            ),
+        });
+
+        if (profile.workspace) {
+            const workspace = await this.findActiveWorkspaceStorage(userDataPath);
+            if (!workspace) {
+                throw new Error("Abra o workspace de destino antes de restaurar o layout dele");
+            }
+
+            changes.push({
+                name: `workspace-${workspace.id}.vscdb`,
+                databasePath: workspace.databasePath,
+                original: await readFile(workspace.databasePath),
+                updated: await applyLayoutEntries(
+                    workspace.databasePath,
+                    profile.workspace.entries,
+                    isAllowedWorkspaceLayoutEntry
+                ),
+            });
+        }
+
+        const backupPath = await this.createLayoutBackup(changes);
+        const applied: typeof changes = [];
+        try {
+            for (const change of changes) {
+                await this.replaceDatabaseAtomically(change.databasePath, change.updated);
+                applied.push(change);
+            }
+            this.logger.info(`Layout restaurado. Backup criado em: ${backupPath}`, true);
+        } catch (error) {
+            for (const change of applied.reverse()) {
+                try {
+                    await this.replaceDatabaseAtomically(change.databasePath, change.original);
+                } catch (rollbackError) {
+                    this.logger.error(
+                        `Falha ao reverter o layout: ${change.name}`,
+                        "SyncController.restoreLayoutProfile",
+                        false,
+                        rollbackError
+                    );
+                }
+            }
+            throw error;
+        }
+    }
+
+    /** Localiza o banco do workspace aberto sem incluir o caminho no perfil sincronizado. */
+    private async findActiveWorkspaceStorage(userDataPath: string): Promise<{
+        id: string;
+        label: string;
+        databasePath: string;
+    } | undefined> {
+        const activeFolder = workspace.workspaceFolders?.[0];
+        if (!activeFolder) {
+            return undefined;
+        }
+
+        const workspaceStoragePath = path.join(userDataPath, "workspaceStorage");
+        const workspaceIds = await readdir(workspaceStoragePath, { withFileTypes: true });
+        for (const workspaceId of workspaceIds) {
+            if (!workspaceId.isDirectory() || !/^[a-f0-9]{16,128}$/i.test(workspaceId.name)) {
+                continue;
+            }
+
+            const rootPath = path.join(workspaceStoragePath, workspaceId.name);
+            try {
+                const metadata = JSON.parse(
+                    await readFile(path.join(rootPath, "workspace.json"), "utf8")
+                ) as { folder?: string };
+                if (metadata.folder !== activeFolder.uri.toString()) {
+                    continue;
+                }
+
+                return {
+                    id: workspaceId.name,
+                    label: path.basename(activeFolder.uri.fsPath) || "Workspace",
+                    databasePath: path.join(rootPath, "state.vscdb"),
+                };
+            } catch {
+                // Ignora entradas incompletas ou incompatíveis de workspaceStorage.
+            }
+        }
+
+        return undefined;
+    }
+
+    /** Obtém a pasta User do Antigravity sem confiar em caminhos fixos de plataforma. */
+    private getUserDataPath(): string {
+        const settingsPath = this.context.globalState.get<string>("settingsPath");
+        if (!settingsPath || path.basename(settingsPath) !== "settings.json") {
+            throw new Error("Não foi possível determinar a pasta de dados do Antigravity");
+        }
+        return path.dirname(settingsPath);
+    }
+
+    /** Salva cópias de segurança antes de alterar qualquer banco de layout. */
+    private async createLayoutBackup(changes: Array<{ name: string; original: Buffer }>): Promise<string> {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const backupPath = path.join(this.context.globalStorageUri.fsPath, "layout-backups", timestamp);
+        await mkdir(backupPath, { recursive: true });
+        for (const change of changes) {
+            await writeFile(path.join(backupPath, change.name), change.original, { flag: "wx" });
+        }
+        return backupPath;
+    }
+
+    /** Substitui um banco somente após gravar uma cópia temporária completa. */
+    private async replaceDatabaseAtomically(databasePath: string, content: Uint8Array): Promise<void> {
+        const temporaryPath = `${databasePath}.antigravity-sync.tmp`;
+        try {
+            await writeFile(temporaryPath, Buffer.from(content), { flag: "wx" });
+            await rename(temporaryPath, databasePath);
+        } catch (error) {
+            await unlink(temporaryPath).catch(() => undefined);
+            throw error;
+        }
+    }
+
+    /** Revalida dados recebidos do Drive antes de alterar o estado local. */
+    private parseLayoutProfile(data: unknown): ILayoutProfile {
+        if (!data || typeof data !== "object") {
+            throw new Error("Dados de layout inválidos");
+        }
+
+        const candidate = data as Partial<ILayoutProfile>;
+        if (candidate.schemaVersion !== 1 || !candidate.global) {
+            throw new Error("Versão de layout incompatível");
+        }
+
+        return createLayoutProfile(candidate.global, candidate.workspace);
     }
 
     // ===== Auxiliares de snippets =====

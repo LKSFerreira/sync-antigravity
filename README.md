@@ -34,6 +34,7 @@ Sincronize as configurações, extensões, atalhos e snippets do **Antigravity**
 | Keybindings (`keybindings.json`) | ✅     |
 | Extensions                       | ✅     |
 | Snippets                         | ✅     |
+| Layout da IDE                    | ✅     |
 
 ## Instalação
 

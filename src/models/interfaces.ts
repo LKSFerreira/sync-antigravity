@@ -16,6 +16,7 @@ export const DEFAULT_SYNC_ITEMS: ISyncItem[] = [
     { key: "extensions",  fileName: "extensions.json",  label: "Extensões",     icon: "extensions",    enabled: true },
     { key: "keybindings", fileName: "keybindings.json", label: "Atalhos",       icon: "keyboard",      enabled: true },
     { key: "snippets",    fileName: "snippets.json",    label: "Snippets",    icon: "symbol-snippet",  enabled: true },
+    { key: "layout",      fileName: "layout.json",      label: "Layout",      icon: "layout",          enabled: true },
 ];
 
 /** Metadados do perfil: armazenados em meta.json dentro da pasta do perfil */

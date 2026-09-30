@@ -56,6 +56,10 @@ const config = {
                     from: "node_modules/@vscode/codicons/dist",
                     to: "webview/codicons",
                 },
+                {
+                    from: "node_modules/sql.js/dist/sql-wasm.wasm",
+                    to: "sql-wasm.wasm",
+                },
             ],
         }),
     ],

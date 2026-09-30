@@ -134,6 +134,7 @@ Modern webview panel providing all functionality in one place:
 | Keybindings (`keybindings.json`) | ✅     | `keybindings.json` |
 | Extensions                       | ✅     | `extensions.json`  |
 | Snippets                         | ✅     | `snippets.json`    |
+| Layout da IDE                    | ✅     | `layout.json`      |
 
 ### Planned
 

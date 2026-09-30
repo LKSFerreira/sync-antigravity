@@ -16,7 +16,7 @@ O projeto será aberto, transparente e controlado por este fork. Ele não será 
 
 - [x] Traduzir a interface, mensagens e documentação principal para pt-BR.
 - [x] Preservar identificadores técnicos e comportamento existente durante a localização.
-- [-] Registrar a arquitetura do perfil portátil e os dados que podem ou não ser sincronizados.
+- [x] Registrar a arquitetura do perfil portátil e os dados que podem ou não ser sincronizados.
 - [x] Manter `package-lock.json` e validar instalação reprodutível com `npm ci`.
 - [x] Fixar no `package.json` todas as versões de dependências de desenvolvimento, sem intervalos como `^` e `20.x`.
 - [x] Definir nome, `publisher`, repositório e identidade visual próprios.
