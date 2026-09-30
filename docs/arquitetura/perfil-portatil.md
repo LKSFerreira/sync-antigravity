@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementação parcial baseada na inspeção do estado persistido do Antigravity IDE no Windows. O layout global e o do workspace aberto já são extraídos e restaurados somente pelas chaves permitidas. A validação em uma instância real do Antigravity IDE, a prévia detalhada e o rollback acionável ainda estão pendentes.
+Implementação parcial baseada na inspeção do estado persistido do Antigravity IDE no Windows. O layout global e os workspaces associados ao perfil são extraídos e restaurados somente pelas chaves permitidas, com prévia e rollback local. A validação da restauração completa em uma instância real do Antigravity IDE ainda está pendente.
 
 ## Objetivo
 
@@ -88,7 +88,7 @@ Cada perfil no Google Drive incluirá, além dos arquivos já existentes:
 └── layout.json
 ```
 
-`layout.json` guarda os pares de chave e valor extraídos dos bancos SQLite, agrupados em layout global e layout do workspace aberto. Ele não contém cópias dos bancos, backups, tokens ou diretórios de extensões.
+`layout.json` guarda os pares de chave e valor extraídos dos bancos SQLite, agrupados em layout global e layouts dos workspaces associados ao perfil. Ele não contém cópias dos bancos, backups, tokens ou diretórios de extensões.
 
 ### Conteúdo de `layout.json`
 
@@ -105,19 +105,25 @@ Cada perfil no Google Drive incluirá, além dos arquivos já existentes:
       }
     ]
   },
-  "workspace": {
+  "workspaces": {
     "schemaVersion": 1,
     "capturedAt": "2026-09-29T00:00:00.000Z",
-    "sourceId": "identificador-opaco-do-workspace",
-    "label": "Projeto principal",
-    "entries": []
+    "layouts": [
+      {
+        "schemaVersion": 1,
+        "capturedAt": "2026-09-29T00:00:00.000Z",
+        "sourceId": "identificador-opaco-do-workspace",
+        "label": "Projeto principal",
+        "entries": []
+      }
+    ]
   }
 }
 ```
 
-Os valores serão preservados como texto, exatamente como estão na tabela `ItemTable` do SQLite. A lista de chaves permitidas é fixa. Cada entrada terá limite de tamanho e o arquivo completo terá limite de tamanho para impedir que um perfil manipulado transporte dados arbitrários.
+Os valores serão preservados como texto, exatamente como estão na tabela `ItemTable` do SQLite. A lista de chaves permitidas é fixa. Cada entrada terá limite de tamanho, e cada perfil poderá manter até 12 layouts de workspace para impedir que um perfil manipulado transporte dados arbitrários.
 
-`sourceId` é derivado do identificador local de armazenamento e não é usado para decidir automaticamente onde gravar em outra máquina. Como caminhos de workspaces podem variar entre computadores, a restauração por workspace é aplicada ao workspace aberto no computador de destino. Isso evita enviar caminhos locais ao Google Drive.
+`sourceId` é derivado do identificador local de armazenamento e não é usado para decidir automaticamente onde gravar em outra máquina. Ao atualizar um perfil, o layout do workspace aberto é acrescentado ou substituído pelo mesmo identificador local. Em outro computador, a pessoa usuária escolhe na prévia qual desses layouts deve ser aplicado ao workspace aberto. Isso evita enviar caminhos locais ao Google Drive e evita associar automaticamente o layout errado.
 
 ## Regras de validação do layout por workspace
 
@@ -135,11 +141,12 @@ Estados de visualizações de extensões só serão aceitos quando o valor for e
 
 ## Segurança e restauração
 
-1. A extensão mostra uma prévia dos grupos que serão restaurados.
-2. Antes de escrever qualquer estado, ela cria um snapshot local dos arquivos e chaves que serão alterados.
-3. A restauração de layout exige recarregamento da janela da IDE.
-4. A restauração por workspace só ocorre quando o workspace correspondente estiver identificado; dados sem correspondência não serão aplicados automaticamente.
-5. A lista de chaves sincronizáveis é mantida no código, testada e documentada. Dados desconhecidos são excluídos por padrão.
+1. A extensão mostra no painel as chaves globais e os workspaces disponíveis antes de restaurar.
+2. Antes de escrever qualquer estado, ela cria um snapshot local dos bancos que serão alterados, com manifesto validado.
+3. O comando `Sync Antigravity: Reverter último layout` restaura o backup mais recente e cria outro snapshot antes de reverter.
+4. A restauração de layout exige recarregamento da janela da IDE.
+5. Quando houver mais de um layout de workspace no perfil, a pessoa usuária escolhe um deles explicitamente. Dados sem escolha não são aplicados automaticamente.
+6. A lista de chaves sincronizáveis é mantida no código, testada e documentada. Dados desconhecidos são excluídos por padrão.
 
 ## Critérios de aceite
 

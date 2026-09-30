@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 [![GitHub](https://img.shields.io/badge/GitHub-LKSFerreira%2Fsync--antigravity-blue)](https://github.com/LKSFerreira/sync-antigravity)
 
-Sincronize as configurações, extensões, atalhos e snippets do **Antigravity** entre dispositivos usando o **Google Drive**.
+Sincronize as configurações, extensões, atalhos, snippets e layout do **Antigravity** entre dispositivos usando o **Google Drive**.
 
 > **Fork independente**: mantido por [LKSFerreira](https://github.com/LKSFerreira), derivado de [thotam/antigravity-sync](https://github.com/thotam/antigravity-sync) e distribuído sob a licença MIT.
 
@@ -14,6 +14,7 @@ Sincronize as configurações, extensões, atalhos e snippets do **Antigravity**
 - **Painel completo**: painel moderno em Webview com informações da conta, gerenciamento de perfis e ações rápidas
 - **Perfis baseados em pastas**: cada perfil fica em uma pasta própria, com arquivos de configuração separados para facilitar a extensibilidade
 - **Seleção de itens**: escolha, em cada operação, o que sincronizar: configurações, extensões, atalhos, snippets e layout
+- **Layout portátil**: preserva somente chaves visuais permitidas, mostra uma prévia antes de aplicar e mantém backups locais reversíveis
 - **Modal de progresso**: acompanhamento em tempo real, etapa por etapa, com barra de progresso animada
 - **Confirmação de extensões**: modal na Webview mostra extensões a instalar ou remover antes da aplicação
 - **Carregamento progressivo**: o painel aparece imediatamente e os dados são carregados gradualmente
@@ -67,6 +68,7 @@ Abra a Paleta de Comandos (`Ctrl+Shift+P` / `Cmd+Shift+P`):
 | Comando                              | Descrição              |
 | ------------------------------------ | ------------------------ |
 | **Sync Antigravity: Abrir painel** | Abre o painel |
+| **Sync Antigravity: Reverter último layout** | Restaura o backup local mais recente do layout |
 
 Todo o gerenciamento de perfis (criar, baixar, enviar e excluir), as ações da conta (iniciar e encerrar sessão) e as configurações estão disponíveis diretamente na interface do painel.
 

@@ -25,6 +25,8 @@ export interface IWorkspaceLayoutsDocument {
 export interface ILayoutProfile {
     schemaVersion: 1;
     global: ILayoutDocument;
+    workspaces?: IWorkspaceLayoutsDocument;
+    /** Compatibilidade com perfis criados antes do suporte a vários workspaces. */
     workspace?: IWorkspaceLayout;
 }
 
@@ -72,6 +74,7 @@ const VIEW_STATE_KEY = /^workbench\.(?:view|panel)\.[a-zA-Z0-9._-]+\.(?:state|hi
 const BOOLEAN_OR_NUMBER = /^(?:true|false|-?\d+(?:\.\d+)?)$/;
 const MAX_ENTRY_BYTES = 16 * 1024;
 const MAX_ENTRIES = 128;
+const MAX_WORKSPACE_LAYOUTS = 12;
 
 /** Retorna se uma chave global pertence à lista de layout permitida. */
 export function isAllowedGlobalLayoutKey(key: string): boolean {
@@ -129,7 +132,7 @@ export function createWorkspaceLayout(
     label: string,
     entries: ILayoutEntry[]
 ): IWorkspaceLayout {
-    if (!/^[a-f0-9]{16,128}$/i.test(sourceId) || !label.trim()) {
+    if (!/^[a-f0-9]{16,128}$/i.test(sourceId) || !label.trim() || label.trim().length > 200) {
         throw new Error("Identificador ou nome de workspace inválido");
     }
 
@@ -142,20 +145,88 @@ export function createWorkspaceLayout(
     };
 }
 
+/** Garante a forma de um documento de layout recebido antes de reutilizá-lo. */
+function normalizeLayoutDocument(
+    document: ILayoutDocument,
+    isAllowed: (entry: ILayoutEntry) => boolean
+): ILayoutDocument {
+    if (
+        !document ||
+        document.schemaVersion !== 1 ||
+        typeof document.capturedAt !== "string" ||
+        !Number.isFinite(Date.parse(document.capturedAt))
+    ) {
+        throw new Error("Documento de layout inválido");
+    }
+    return {
+        schemaVersion: 1,
+        capturedAt: document.capturedAt,
+        entries: validateLayoutEntries(document.entries, isAllowed),
+    };
+}
+
+/** Garante a forma de um layout de workspace recebido antes de reutilizá-lo. */
+function normalizeWorkspaceLayout(layout: IWorkspaceLayout): IWorkspaceLayout {
+    const document = normalizeLayoutDocument(layout, isAllowedWorkspaceLayoutEntry);
+    const normalized = createWorkspaceLayout(layout.sourceId, layout.label, document.entries);
+    return { ...normalized, capturedAt: document.capturedAt };
+}
+
+/** Normaliza os layouts de workspace e impede duplicidade por armazenamento local. */
+export function normalizeWorkspaceLayouts(layouts: IWorkspaceLayout[]): IWorkspaceLayout[] {
+    if (!Array.isArray(layouts) || layouts.length > MAX_WORKSPACE_LAYOUTS) {
+        throw new Error("Quantidade inválida de layouts de workspace");
+    }
+
+    const sourceIds = new Set<string>();
+    return layouts.map((layout) => {
+        const normalized = normalizeWorkspaceLayout(layout);
+        if (sourceIds.has(normalized.sourceId)) {
+            throw new Error("Layout de workspace duplicado");
+        }
+        sourceIds.add(normalized.sourceId);
+        return normalized;
+    });
+}
+
+/** Lê layouts novos e também o formato de um único workspace usado anteriormente. */
+export function getWorkspaceLayouts(profile: ILayoutProfile): IWorkspaceLayout[] {
+    if (profile.workspaces && (
+        profile.workspaces.schemaVersion !== 1 ||
+        typeof profile.workspaces.capturedAt !== "string" ||
+        !Number.isFinite(Date.parse(profile.workspaces.capturedAt)) ||
+        !Array.isArray(profile.workspaces.layouts)
+    )) {
+        throw new Error("Documento de workspaces inválido");
+    }
+    const layouts = profile.workspaces?.layouts ?? (profile.workspace ? [profile.workspace] : []);
+    return normalizeWorkspaceLayouts(layouts);
+}
+
+/** Cria o documento que agrupa os layouts vinculados a um perfil. */
+export function createWorkspaceLayoutsDocument(
+    layouts: IWorkspaceLayout[]
+): IWorkspaceLayoutsDocument | undefined {
+    const normalized = normalizeWorkspaceLayouts(layouts);
+    if (normalized.length === 0) {
+        return undefined;
+    }
+
+    return {
+        schemaVersion: 1,
+        capturedAt: new Date().toISOString(),
+        layouts: normalized,
+    };
+}
+
 /** Cria o conteúdo de layout armazenado dentro de um perfil de sincronização. */
 export function createLayoutProfile(
     global: ILayoutDocument,
-    workspace?: IWorkspaceLayout
+    workspaces: IWorkspaceLayout[] = []
 ): ILayoutProfile {
     return {
         schemaVersion: 1,
-        global: {
-            schemaVersion: 1,
-            capturedAt: global.capturedAt,
-            entries: validateLayoutEntries(global.entries, (entry) => isAllowedGlobalLayoutKey(entry.key)),
-        },
-        workspace: workspace
-            ? createWorkspaceLayout(workspace.sourceId, workspace.label, workspace.entries)
-            : undefined,
+        global: normalizeLayoutDocument(global, (entry) => isAllowedGlobalLayoutKey(entry.key)),
+        workspaces: createWorkspaceLayoutsDocument(workspaces),
     };
 }

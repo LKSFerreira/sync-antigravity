@@ -249,6 +249,72 @@
         });
     }
 
+    /** Mostra exatamente as chaves e os workspaces que um layout pode restaurar. */
+    function showLayoutRestorePreview(profileName, preview) {
+        return new Promise((resolve) => {
+            const workspaces = Array.isArray(preview.workspaces) ? preview.workspaces : [];
+            const workspaceOptions = workspaces.length === 0
+                ? '<p class="layout-preview-muted">Este perfil não contém layout de workspace.</p>'
+                : workspaces.map((item, index) => `
+                    <label class="sync-item layout-workspace-option">
+                        <input type="radio" name="layout-workspace" value="${escapeAttr(item.sourceId)}" ${workspaces.length === 1 && index === 0 ? "checked" : ""} />
+                        <span class="codicon codicon-folder"></span>
+                        <span>${escapeHtml(item.label)} (${Number(item.entryCount) || 0} itens)</span>
+                    </label>
+                `).join('');
+            const globalKeys = Array.isArray(preview.globalKeys) && preview.globalKeys.length > 0
+                ? `<ul class="layout-preview-keys">${preview.globalKeys.map((key) => `<li><code>${escapeHtml(key)}</code></li>`).join('')}</ul>`
+                : '<p class="layout-preview-muted">Nenhuma chave global foi salva.</p>';
+            const workspaceHint = workspaces.length > 1
+                ? '<p class="layout-preview-muted">Escolha qual workspace deve receber o layout neste computador.</p>'
+                : '';
+            const overlay = document.createElement("div");
+            overlay.className = "modal-overlay";
+            overlay.innerHTML = `
+                <div class="modal layout-preview-modal">
+                    <div class="modal-header modal-header-accent">
+                        <span class="codicon codicon-layout"></span>
+                        <span>Prévia do layout</span>
+                    </div>
+                    <div class="modal-body">
+                        <p>O perfil <strong>${escapeHtml(profileName)}</strong> restaurará ${Number(preview.globalEntryCount) || 0} itens globais. Um backup local será criado antes da alteração.</p>
+                        <div class="layout-preview-section">
+                            <div class="sync-item-label">Layout global</div>
+                            ${globalKeys}
+                        </div>
+                        <div class="layout-preview-section">
+                            <div class="sync-item-label">Layout de workspace</div>
+                            ${workspaceHint}
+                            ${workspaceOptions}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" data-modal="cancel">Cancelar</button>
+                        <button class="btn btn-accent" data-modal="confirm">Aplicar layout</button>
+                    </div>
+                </div>
+            `;
+
+            function close(result) {
+                overlay.classList.add("modal-out");
+                setTimeout(() => { overlay.remove(); resolve(result); }, 200);
+            }
+
+            overlay.querySelector("[data-modal='confirm']").addEventListener("click", () => {
+                const selected = overlay.querySelector("input[name='layout-workspace']:checked");
+                if (workspaces.length > 1 && !selected) {
+                    showToast("error", "Selecione o layout de workspace que será restaurado");
+                    return;
+                }
+                close({ workspaceLayoutId: selected?.value });
+            });
+            overlay.querySelector("[data-modal='cancel']").addEventListener("click", () => close(null));
+            overlay.addEventListener("click", (event) => { if (event.target === overlay) close(null); });
+            document.body.appendChild(overlay);
+            overlay.querySelector("[data-modal='confirm']").focus();
+        });
+    }
+
     // ========================================
     // SISTEMA DE NOTIFICAÇÕES (aprimorado)
     // ========================================
@@ -962,6 +1028,19 @@
                 break;
             case "filePreview":
                 showFilePreview(msg.fileName, msg.content);
+                break;
+            case "layoutRestorePreview":
+                showLayoutRestorePreview(msg.profileName, msg.preview || {}).then((selection) => {
+                    if (selection) {
+                        vscode.postMessage({
+                            command: "confirmLayoutRestore",
+                            restoreId: msg.restoreId,
+                            workspaceLayoutId: selection.workspaceLayoutId,
+                        });
+                    } else {
+                        vscode.postMessage({ command: "cancelLayoutRestore", restoreId: msg.restoreId });
+                    }
+                });
                 break;
             case "profiles":
                 // Fase 2: atualiza os perfis após concluir o carregamento

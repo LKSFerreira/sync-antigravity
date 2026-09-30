@@ -346,6 +346,42 @@ body {
     padding: 4px 8px;
 }
 
+/* === Prévia de layout === */
+.layout-preview-modal {
+    max-width: 620px;
+}
+
+.layout-preview-section {
+    margin-top: 16px;
+}
+
+.layout-preview-keys {
+    max-height: 180px;
+    overflow: auto;
+    margin: 8px 0 0;
+    padding-left: 20px;
+    font-size: 11px;
+}
+
+.layout-preview-keys li {
+    margin: 4px 0;
+}
+
+.layout-preview-keys code {
+    color: var(--vscode-textPreformat-foreground, var(--vscode-foreground));
+    word-break: break-all;
+}
+
+.layout-preview-muted {
+    margin: 8px 0 0;
+    color: var(--vscode-descriptionForeground);
+    font-size: 12px;
+}
+
+.layout-workspace-option {
+    margin-top: 8px;
+}
+
 /* === Login Section === */
 .login-section {
     display: flex;

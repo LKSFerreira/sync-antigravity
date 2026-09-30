@@ -26,18 +26,18 @@ O projeto será aberto, transparente e controlado por este fork. Ele não será 
 
 ## Fase 1: Perfil portátil e layout
 
-- [-] Mapear o estado global e por workspace persistido pelo Antigravity IDE.
-- [-] Definir lista restritiva de chaves de layout permitidas.
-- [-] Excluir histórico, cache, sessão, tokens, caminhos locais e dados arbitrários de extensões.
-- [-] Adicionar o item `Layout` ao perfil de sincronização.
-- [-] Capturar layout global e do workspace aberto em `layout.json`.
-- [-] Validar layout recebido antes de restaurar.
-- [-] Criar backup local e usar arquivo temporário durante a restauração.
-- [-] Validar leitura/restauração em cópias temporárias de bancos SQLite.
+- [x] Mapear o estado global e por workspace persistido pelo Antigravity IDE.
+- [x] Definir lista restritiva de chaves de layout permitidas.
+- [x] Excluir histórico, cache, sessão, tokens, caminhos locais e dados arbitrários de extensões.
+- [x] Adicionar o item `Layout` ao perfil de sincronização.
+- [x] Capturar layout global e do workspace aberto em `layout.json`.
+- [x] Validar layout recebido antes de restaurar.
+- [x] Criar backup local e usar arquivo temporário durante a restauração.
+- [x] Validar leitura/restauração em cópias temporárias de bancos SQLite.
 - [-] Testar a restauração em uma instância real do Antigravity IDE.
-- [ ] Adicionar visualização no painel dos itens de layout que serão restaurados.
-- [ ] Adicionar comando de rollback a partir do backup local.
-- [ ] Permitir associar vários layouts de workspace a perfis diferentes.
+- [x] Adicionar visualização no painel dos itens de layout que serão restaurados.
+- [x] Adicionar comando de rollback a partir do backup local.
+- [x] Permitir associar vários layouts de workspace a perfis diferentes.
 
 **Critério de aceite:** em uma instalação limpa, um perfil restaura o layout global; com o workspace aberto, restaura também a organização visual dele, sem transportar dados não permitidos.
 

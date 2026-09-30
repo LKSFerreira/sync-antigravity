@@ -83,9 +83,42 @@ export async function activate(ctx: vscode.ExtensionContext) {
             () => { dashboard.show(); }
         );
 
+        const RollbackLayout = vscode.commands.registerCommand(
+            "antigravitysync.rollbackLayout",
+            async () => {
+                try {
+                    const backup = await controller.getLatestLayoutBackup();
+                    if (!backup) {
+                        vscode.window.showInformationMessage("Nenhum backup de layout está disponível");
+                        return;
+                    }
+                    const choice = await vscode.window.showWarningMessage(
+                        `Restaurar o backup de layout de ${new Date(backup.createdAt).toLocaleString("pt-BR")}?`,
+                        { modal: true },
+                        "Restaurar backup"
+                    );
+                    if (choice !== "Restaurar backup") {
+                        return;
+                    }
+
+                    await controller.rollbackLatestLayoutBackup();
+                    const reload = await vscode.window.showInformationMessage(
+                        "Backup de layout restaurado. Recarregue a janela para aplicar a organização visual.",
+                        "Recarregar agora"
+                    );
+                    if (reload === "Recarregar agora") {
+                        await vscode.commands.executeCommand("workbench.action.reloadWindow");
+                    }
+                } catch (error) {
+                    logger.error("Falha ao restaurar backup de layout", "rollbackLayout", true, error);
+                }
+            }
+        );
+
         // Registra todos os comandos
         ctx.subscriptions.push(
             ShowDashboard,
+            RollbackLayout,
             statusBarItem, logger
         );
 

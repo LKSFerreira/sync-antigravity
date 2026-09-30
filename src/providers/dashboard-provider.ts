@@ -4,7 +4,7 @@
 import * as vscode from "vscode";
 import GoogleAuth from "../core/google-auth";
 import GoogleDriveService, { ProgressCallback } from "../core/google-drive";
-import { DEFAULT_SYNC_ITEMS, ISyncItem } from "../models/interfaces";
+import { DEFAULT_SYNC_ITEMS, IProfile, ISyncItem } from "../models/interfaces";
 import SyncController from "../core/sync-controller";
 import Logger from "../core/logger";
 
@@ -30,6 +30,14 @@ interface WebviewMessage {
     toInstall?: string[];
     toDelete?: string[];
     syncKeys?: string[];  // Chaves de sincronização selecionadas na interface
+    restoreId?: string;
+    workspaceLayoutId?: string;
+}
+
+interface PendingLayoutRestore {
+    profile: IProfile;
+    profileName: string;
+    syncItems: ISyncItem[];
 }
 
 export default class DashboardProvider {
@@ -40,6 +48,8 @@ export default class DashboardProvider {
     private readonly controller: SyncController;
     private readonly logger: Logger;
     private readonly context: vscode.ExtensionContext;
+    private readonly pendingLayoutRestores = new Map<string, PendingLayoutRestore>();
+    private layoutRestoreSequence = 0;
 
     constructor(
         context: vscode.ExtensionContext,
@@ -235,31 +245,55 @@ export default class DashboardProvider {
                         sendLoading(`pull-${profileName}`, false);
                         return;
                     }
-                    await this.controller.updateLocalProfile(profile, syncItems);
+                    const layoutEnabled = syncItems.some((item) => item.key === "layout" && item.enabled);
+                    if (layoutEnabled && profile.data.layout) {
+                        const restoreId = String(++this.layoutRestoreSequence);
+                        const preview = this.controller.getLayoutRestorePreview(profile.data.layout);
+                        this.pendingLayoutRestores.set(restoreId, { profile, profileName, syncItems });
+                        this.panel?.webview.postMessage({ type: "syncDone" });
+                        sendLoading(`pull-${profileName}`, false);
+                        this.panel?.webview.postMessage({
+                            type: "layoutRestorePreview",
+                            restoreId,
+                            profileName,
+                            preview,
+                        });
+                        break;
+                    }
+
+                    await this.completeProfilePull(profile, profileName, syncItems, undefined, sendToast);
                     this.panel?.webview.postMessage({ type: "syncDone" });
                     sendLoading(`pull-${profileName}`, false);
-
-                    // Verifica as diferenças entre extensões somente quando elas foram selecionadas
-                    const extEnabled = syncItems.find(i => i.key === "extensions")?.enabled;
-                    const extData = profile.data.extensions;
-                    if (extEnabled && extData && Array.isArray(extData)) {
-                        const diff = this.controller.getExtensionDiff(extData);
-                        if (diff.toInstall.length > 0 || diff.toDelete.length > 0) {
-                            this.panel?.webview.postMessage({
-                                type: "askExtensionSync",
-                                toInstall: diff.toInstall,
-                                toDelete: diff.toDelete,
-                            });
-                        } else {
-                            sendToast("success", `Perfil "${profileName}" baixado`);
-                            this.panel?.webview.postMessage({ type: "askReload" });
-                        }
-                    } else {
-                        sendToast("success", `Perfil "${profileName}" baixado`);
-                        this.panel?.webview.postMessage({ type: "askReload" });
-                    }
                     break;
                 }
+
+                case "confirmLayoutRestore": {
+                    if (!message.restoreId) { return; }
+                    const pending = this.pendingLayoutRestores.get(message.restoreId);
+                    if (!pending) {
+                        throw new Error("A prévia de layout expirou. Baixe o perfil novamente.");
+                    }
+                    this.pendingLayoutRestores.delete(message.restoreId);
+                    sendLoading(`pull-${pending.profileName}`, true);
+                    this.panel?.webview.postMessage({ type: "syncStart", title: `Aplicando "${pending.profileName}"` });
+                    await this.completeProfilePull(
+                        pending.profile,
+                        pending.profileName,
+                        pending.syncItems,
+                        message.workspaceLayoutId,
+                        sendToast
+                    );
+                    this.panel?.webview.postMessage({ type: "syncDone" });
+                    sendLoading(`pull-${pending.profileName}`, false);
+                    break;
+                }
+
+                case "cancelLayoutRestore":
+                    if (message.restoreId) {
+                        this.pendingLayoutRestores.delete(message.restoreId);
+                    }
+                    sendToast("info", "Aplicação do perfil cancelada");
+                    break;
 
                 case "applyExtensionSync": {
                     const { toInstall, toDelete } = message;
@@ -282,7 +316,12 @@ export default class DashboardProvider {
                     }));
                     sendLoading(`push-${profileName}`, true);
                     this.panel?.webview.postMessage({ type: "syncStart", title: `Enviando "${profileName}"` });
-                    const current = await this.controller.getActiveProfile(syncItems);
+                    const layoutItem = DEFAULT_SYNC_ITEMS.find((item) => item.key === "layout");
+                    const layoutEnabled = syncItems.some((item) => item.key === "layout" && item.enabled);
+                    const existingLayout = layoutEnabled && layoutItem
+                        ? (await this.drive.getProfile(profileName, [{ ...layoutItem, enabled: true }]))?.data.layout
+                        : undefined;
+                    const current = await this.controller.getActiveProfile(syncItems, existingLayout);
                     current.profileName = profileName;
                     await this.drive.saveProfile(current, syncItems, sendProgress);
                     this.panel?.webview.postMessage({ type: "syncDone" });
@@ -378,6 +417,34 @@ export default class DashboardProvider {
             sendLoading(message.command, false);
             sendToast("error", error?.message || "Ocorreu um erro");
         }
+    }
+
+    /** Aplica o perfil confirmado e continua o fluxo de extensões e recarregamento. */
+    private async completeProfilePull(
+        profile: IProfile,
+        profileName: string,
+        syncItems: ISyncItem[],
+        workspaceLayoutId: string | undefined,
+        sendToast: (level: "info" | "success" | "error", text: string) => void
+    ): Promise<void> {
+        await this.controller.updateLocalProfile(profile, syncItems, workspaceLayoutId);
+
+        const extEnabled = syncItems.find((item) => item.key === "extensions")?.enabled;
+        const extData = profile.data.extensions;
+        if (extEnabled && extData && Array.isArray(extData)) {
+            const diff = this.controller.getExtensionDiff(extData);
+            if (diff.toInstall.length > 0 || diff.toDelete.length > 0) {
+                this.panel?.webview.postMessage({
+                    type: "askExtensionSync",
+                    toInstall: diff.toInstall,
+                    toDelete: diff.toDelete,
+                });
+                return;
+            }
+        }
+
+        sendToast("success", `Perfil "${profileName}" baixado`);
+        this.panel?.webview.postMessage({ type: "askReload" });
     }
 
     /** Gera o conteúdo HTML da Webview */

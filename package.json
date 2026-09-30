@@ -1,7 +1,7 @@
 {
     "name": "sync-antigravity",
     "displayName": "Sync Antigravity",
-    "description": "Sincronize configurações, extensões, atalhos e snippets do Antigravity entre dispositivos usando o Google Drive",
+    "description": "Sincronize configurações, extensões, atalhos, snippets e layout do Antigravity entre dispositivos usando o Google Drive",
     "version": "0.7.4",
     "publisher": "lksferreira",
     "author": {
@@ -42,6 +42,11 @@
             {
                 "command": "antigravitysync.showDashboard",
                 "title": "Abrir painel",
+                "category": "Sync Antigravity"
+            },
+            {
+                "command": "antigravitysync.rollbackLayout",
+                "title": "Reverter último layout",
                 "category": "Sync Antigravity"
             }
         ],

@@ -18,6 +18,7 @@ import {
     createGlobalLayoutDocument,
     createLayoutProfile,
     createWorkspaceLayout,
+    getWorkspaceLayouts,
     ILayoutProfile,
     isAllowedGlobalLayoutKey,
     isAllowedWorkspaceLayoutEntry,
@@ -28,6 +29,43 @@ import {
     readWorkspaceLayoutEntries,
 } from "./layout-state-database";
 import Logger from "./logger";
+
+export interface ILayoutRestorePreview {
+    globalEntryCount: number;
+    globalKeys: string[];
+    workspaces: Array<{
+        sourceId: string;
+        label: string;
+        entryCount: number;
+    }>;
+}
+
+export interface ILayoutBackupInfo {
+    id: string;
+    createdAt: string;
+    databaseCount: number;
+}
+
+type LayoutBackupTarget = "global" | "workspace";
+
+interface ILayoutBackupManifest {
+    schemaVersion: 1;
+    createdAt: string;
+    files: Array<{
+        name: string;
+        target: LayoutBackupTarget;
+        workspaceId?: string;
+    }>;
+}
+
+interface ILayoutChange {
+    name: string;
+    target: LayoutBackupTarget;
+    workspaceId?: string;
+    databasePath: string;
+    original: Buffer;
+    updated: Uint8Array;
+}
 
 export default class SyncController {
     context: ExtensionContext;
@@ -216,7 +254,7 @@ export default class SyncController {
     }
 
     /** Lê a configuração atual com base nos itens de sincronização habilitados */
-    public async getActiveProfile(syncItems: ISyncItem[]): Promise<IProfile> {
+    public async getActiveProfile(syncItems: ISyncItem[], existingLayout?: unknown): Promise<IProfile> {
         const data: Record<string, any> = {};
 
         for (const item of syncItems.filter(i => i.enabled)) {
@@ -234,7 +272,7 @@ export default class SyncController {
                     data.snippets = await this.readSnippets();
                     break;
                 case "layout":
-                    data.layout = await this.readLayoutProfile();
+                    data.layout = await this.readLayoutProfile(existingLayout);
                     break;
                 default:
                     break;
@@ -245,7 +283,11 @@ export default class SyncController {
     }
 
     /** Escreve a configuração com base nos itens habilitados (as extensões são tratadas separadamente pelo provedor) */
-    public async updateLocalProfile(profile: IProfile, syncItems: ISyncItem[]) {
+    public async updateLocalProfile(
+        profile: IProfile,
+        syncItems: ISyncItem[],
+        workspaceLayoutId?: string
+    ) {
         for (const item of syncItems.filter(i => i.enabled)) {
             switch (item.key) {
                 case "settings": {
@@ -270,7 +312,7 @@ export default class SyncController {
                 }
                 case "layout": {
                     if (profile.data.layout) {
-                        await this.restoreLayoutProfile(profile.data.layout);
+                        await this.restoreLayoutProfile(profile.data.layout, workspaceLayoutId);
                     }
                     break;
                 }
@@ -327,8 +369,8 @@ export default class SyncController {
 
     // ===== Layout helpers =====
 
-    /** Lê o layout global e, quando houver, o layout do workspace aberto. */
-    private async readLayoutProfile(): Promise<ILayoutProfile> {
+    /** Lê o layout global e preserva os workspaces já associados ao perfil. */
+    private async readLayoutProfile(existingLayout?: unknown): Promise<ILayoutProfile> {
         const userDataPath = this.getUserDataPath();
         const globalEntries = await readGlobalLayoutEntries(
             path.join(userDataPath, "globalStorage", "state.vscdb")
@@ -336,31 +378,29 @@ export default class SyncController {
         const global = createGlobalLayoutDocument(globalEntries);
         const workspace = await this.findActiveWorkspaceStorage(userDataPath);
 
+        const existingWorkspaces = existingLayout
+            ? getWorkspaceLayouts(this.parseLayoutProfile(existingLayout))
+            : [];
         if (!workspace) {
-            return createLayoutProfile(global);
+            return createLayoutProfile(global, existingWorkspaces);
         }
 
         const entries = await readWorkspaceLayoutEntries(workspace.databasePath);
-        return createLayoutProfile(
-            global,
-            createWorkspaceLayout(workspace.id, workspace.label, entries)
-        );
+        const currentWorkspace = createWorkspaceLayout(workspace.id, workspace.label, entries);
+        const otherWorkspaces = existingWorkspaces.filter((item) => item.sourceId !== currentWorkspace.sourceId);
+        return createLayoutProfile(global, [...otherWorkspaces, currentWorkspace]);
     }
 
     /** Restaura o layout em bancos separados, com cópias de segurança e rollback local. */
-    private async restoreLayoutProfile(layout: unknown): Promise<void> {
+    private async restoreLayoutProfile(layout: unknown, workspaceLayoutId?: string): Promise<void> {
         const profile = this.parseLayoutProfile(layout);
         const userDataPath = this.getUserDataPath();
-        const changes: Array<{
-            name: string;
-            databasePath: string;
-            original: Buffer;
-            updated: Uint8Array;
-        }> = [];
+        const changes: ILayoutChange[] = [];
         const globalDatabasePath = path.join(userDataPath, "globalStorage", "state.vscdb");
 
         changes.push({
             name: "global-state.vscdb",
+            target: "global",
             databasePath: globalDatabasePath,
             original: await readFile(globalDatabasePath),
             updated: await applyLayoutEntries(
@@ -370,7 +410,8 @@ export default class SyncController {
             ),
         });
 
-        if (profile.workspace) {
+        const workspaceLayout = this.selectWorkspaceLayout(profile, workspaceLayoutId);
+        if (workspaceLayout) {
             const workspace = await this.findActiveWorkspaceStorage(userDataPath);
             if (!workspace) {
                 throw new Error("Abra o workspace de destino antes de restaurar o layout dele");
@@ -378,11 +419,13 @@ export default class SyncController {
 
             changes.push({
                 name: `workspace-${workspace.id}.vscdb`,
+                target: "workspace",
+                workspaceId: workspace.id,
                 databasePath: workspace.databasePath,
                 original: await readFile(workspace.databasePath),
                 updated: await applyLayoutEntries(
                     workspace.databasePath,
-                    profile.workspace.entries,
+                    workspaceLayout.entries,
                     isAllowedWorkspaceLayoutEntry
                 ),
             });
@@ -411,6 +454,93 @@ export default class SyncController {
             }
             throw error;
         }
+    }
+
+    /** Produz a prévia segura dos grupos e chaves que poderão ser restaurados. */
+    public getLayoutRestorePreview(layout: unknown): ILayoutRestorePreview {
+        const profile = this.parseLayoutProfile(layout);
+        return {
+            globalEntryCount: profile.global.entries.length,
+            globalKeys: profile.global.entries.map((entry) => entry.key),
+            workspaces: getWorkspaceLayouts(profile).map((workspaceLayout) => ({
+                sourceId: workspaceLayout.sourceId,
+                label: workspaceLayout.label,
+                entryCount: workspaceLayout.entries.length,
+            })),
+        };
+    }
+
+    /** Retorna o backup de layout mais recente que pode ser restaurado com segurança. */
+    public async getLatestLayoutBackup(): Promise<ILayoutBackupInfo | undefined> {
+        const root = this.getLayoutBackupRoot();
+        try {
+            const entries = await readdir(root, { withFileTypes: true });
+            const backupIds = entries
+                .filter((entry) => entry.isDirectory() && this.isSafeLayoutBackupId(entry.name))
+                .map((entry) => entry.name)
+                .sort()
+                .reverse();
+            for (const backupId of backupIds) {
+                const manifest = await this.readLayoutBackupManifest(backupId).catch(() => undefined);
+                if (manifest) {
+                    return {
+                        id: backupId,
+                        createdAt: manifest.createdAt,
+                        databaseCount: manifest.files.length,
+                    };
+                }
+            }
+        } catch {
+            // Nenhum backup ainda foi criado.
+        }
+        return undefined;
+    }
+
+    /** Restaura o snapshot de layout mais recente e cria outro snapshot para desfazer a reversão. */
+    public async rollbackLatestLayoutBackup(): Promise<ILayoutBackupInfo> {
+        const backup = await this.getLatestLayoutBackup();
+        if (!backup) {
+            throw new Error("Nenhum backup de layout disponível para restaurar");
+        }
+
+        const manifest = await this.readLayoutBackupManifest(backup.id);
+        const userDataPath = this.getUserDataPath();
+        const backupPath = this.getLayoutBackupPath(backup.id);
+        const changes: ILayoutChange[] = [];
+
+        for (const file of manifest.files) {
+            const databasePath = this.getBackupTargetDatabasePath(file, userDataPath);
+            const snapshotPath = path.resolve(backupPath, file.name);
+            if (!snapshotPath.startsWith(`${backupPath}${path.sep}`)) {
+                throw new Error("Arquivo de backup inválido");
+            }
+            changes.push({
+                ...file,
+                databasePath,
+                original: await readFile(databasePath),
+                updated: await readFile(snapshotPath),
+            });
+        }
+
+        const rollbackBackupPath = await this.createLayoutBackup(changes);
+        const applied: ILayoutChange[] = [];
+        try {
+            for (const change of changes) {
+                await this.replaceDatabaseAtomically(change.databasePath, change.updated);
+                applied.push(change);
+            }
+        } catch (error) {
+            for (const change of applied.reverse()) {
+                await this.replaceDatabaseAtomically(change.databasePath, change.original).catch(() => undefined);
+            }
+            throw error;
+        }
+
+        this.logger.info(
+            `Backup de layout restaurado: ${backup.id}. Snapshot de segurança: ${rollbackBackupPath}`,
+            true
+        );
+        return backup;
     }
 
     /** Localiza o banco do workspace aberto sem incluir o caminho no perfil sincronizado. */
@@ -463,14 +593,87 @@ export default class SyncController {
     }
 
     /** Salva cópias de segurança antes de alterar qualquer banco de layout. */
-    private async createLayoutBackup(changes: Array<{ name: string; original: Buffer }>): Promise<string> {
+    private async createLayoutBackup(changes: ILayoutChange[]): Promise<string> {
         const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-        const backupPath = path.join(this.context.globalStorageUri.fsPath, "layout-backups", timestamp);
+        const backupPath = this.getLayoutBackupPath(timestamp);
         await mkdir(backupPath, { recursive: true });
         for (const change of changes) {
             await writeFile(path.join(backupPath, change.name), change.original, { flag: "wx" });
         }
+        const manifest: ILayoutBackupManifest = {
+            schemaVersion: 1,
+            createdAt: new Date().toISOString(),
+            files: changes.map((change) => ({
+                name: change.name,
+                target: change.target,
+                workspaceId: change.workspaceId,
+            })),
+        };
+        await writeFile(
+            path.join(backupPath, "manifest.json"),
+            JSON.stringify(manifest, null, 2),
+            { flag: "wx" }
+        );
         return backupPath;
+    }
+
+    /** Raiz local e exclusiva dos snapshots criados pela extensão. */
+    private getLayoutBackupRoot(): string {
+        return path.join(this.context.globalStorageUri.fsPath, "layout-backups");
+    }
+
+    /** Resolve uma pasta de backup sem aceitar segmentos de caminho externos. */
+    private getLayoutBackupPath(backupId: string): string {
+        if (!this.isSafeLayoutBackupId(backupId)) {
+            throw new Error("Identificador de backup inválido");
+        }
+        return path.join(this.getLayoutBackupRoot(), backupId);
+    }
+
+    /** Lê e valida o manifesto antes de usar qualquer caminho armazenado em backup. */
+    private async readLayoutBackupManifest(backupId: string): Promise<ILayoutBackupManifest> {
+        const backupPath = this.getLayoutBackupPath(backupId);
+        const data = JSON.parse(await readFile(path.join(backupPath, "manifest.json"), "utf8")) as Partial<ILayoutBackupManifest>;
+        if (data.schemaVersion !== 1 || typeof data.createdAt !== "string" || !Array.isArray(data.files) || data.files.length === 0) {
+            throw new Error("Manifesto de backup inválido");
+        }
+
+        const files = data.files.map((file) => {
+            if (
+                !file ||
+                typeof file.name !== "string" ||
+                !/^(?:global-state|workspace-[a-f0-9]{16,128})\.vscdb$/i.test(file.name) ||
+                (file.target !== "global" && file.target !== "workspace") ||
+                (file.target === "workspace" && !/^[a-f0-9]{16,128}$/i.test(file.workspaceId || ""))
+            ) {
+                throw new Error("Entrada de backup inválida");
+            }
+            return {
+                name: file.name,
+                target: file.target,
+                workspaceId: file.workspaceId,
+            };
+        });
+        return { schemaVersion: 1, createdAt: data.createdAt, files };
+    }
+
+    /** Determina o destino local a partir de campos validados do manifesto. */
+    private getBackupTargetDatabasePath(
+        file: ILayoutBackupManifest["files"][number],
+        userDataPath: string
+    ): string {
+        if (file.target === "global" && file.name === "global-state.vscdb") {
+            return path.join(userDataPath, "globalStorage", "state.vscdb");
+        }
+        if (file.target === "workspace" && file.workspaceId && file.name === `workspace-${file.workspaceId}.vscdb`) {
+            return path.join(userDataPath, "workspaceStorage", file.workspaceId, "state.vscdb");
+        }
+        throw new Error("Destino de backup inválido");
+    }
+
+    /** Aceita somente timestamps gerados pela extensão. */
+    private isSafeLayoutBackupId(backupId: string): boolean {
+        return /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/.test(backupId);
     }
 
     /** Substitui um banco somente após gravar uma cópia temporária completa. */
@@ -485,6 +688,29 @@ export default class SyncController {
         }
     }
 
+    /** Escolhe o layout do workspace somente após uma seleção explícita quando houver mais de um. */
+    private selectWorkspaceLayout(
+        profile: ILayoutProfile,
+        workspaceLayoutId?: string
+    ) {
+        const layouts = getWorkspaceLayouts(profile);
+        if (layouts.length === 0) {
+            return undefined;
+        }
+        if (layouts.length === 1) {
+            return layouts[0];
+        }
+        if (!workspaceLayoutId) {
+            throw new Error("Selecione o layout de workspace que deve ser restaurado");
+        }
+
+        const selected = layouts.find((layout) => layout.sourceId === workspaceLayoutId);
+        if (!selected) {
+            throw new Error("O layout de workspace selecionado não pertence ao perfil");
+        }
+        return selected;
+    }
+
     /** Revalida dados recebidos do Drive antes de alterar o estado local. */
     private parseLayoutProfile(data: unknown): ILayoutProfile {
         if (!data || typeof data !== "object") {
@@ -496,7 +722,7 @@ export default class SyncController {
             throw new Error("Versão de layout incompatível");
         }
 
-        return createLayoutProfile(candidate.global, candidate.workspace);
+        return createLayoutProfile(candidate.global, getWorkspaceLayouts(candidate as ILayoutProfile));
     }
 
     // ===== Auxiliares de snippets =====
