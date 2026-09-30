@@ -57,12 +57,12 @@ O projeto será aberto, transparente e controlado por este fork. Ele não será 
 ## Fase 3: OAuth e privacidade
 
 - [x] Manter tokens no `SecretStorage` da IDE.
-- [-] Adicionar PKCE com `S256` ao fluxo de autorização.
-- [ ] Criar projeto OAuth próprio no Google Cloud.
-- [ ] Configurar Client ID de aplicativo desktop sob controle do fork.
-- [ ] Remover qualquer dependência operacional das credenciais do projeto original.
-- [ ] Documentar escopos, retenção de dados e fluxo de autenticação.
-- [ ] Revisar se os escopos `userinfo.email` e `userinfo.profile` continuam necessários.
+- [x] Adicionar PKCE com `S256` ao fluxo de autorização.
+- [x] Criar projeto OAuth próprio no Google Cloud.
+- [x] Configurar Client ID de aplicativo desktop sob controle do fork.
+- [x] Remover qualquer dependência operacional das credenciais do projeto original.
+- [x] Documentar escopos, retenção de dados e fluxo de autenticação.
+- [x] Revisar se os escopos `userinfo.email` e `userinfo.profile` continuam necessários.
 
 **Critério de aceite:** cada pessoa usuária autentica sua própria conta Google, com escopos mínimos, e o fork não depende de credenciais de terceiros.
 

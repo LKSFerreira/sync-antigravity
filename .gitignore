@@ -4,6 +4,10 @@ dist/
 *.vsix
 .vscode-test/
 .env
+# Credenciais OAuth baixadas do Google Cloud nunca devem entrar no repositório.
+client_secret_*.apps.googleusercontent.com.json
+# Prévia local para ajustar manualmente o efeito de sucesso do login.
+preview-login-success.html
 .gitnexus
 .claude/
 AGENTS.md

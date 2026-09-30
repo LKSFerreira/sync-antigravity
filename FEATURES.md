@@ -1,6 +1,6 @@
 # Recursos
 
-Documentação detalhada dos recursos da extensão **Antigravity Sync**.
+Documentação detalhada dos recursos da extensão **Sync Antigravity**.
 
 ## 📂 Gerenciamento de perfis
 

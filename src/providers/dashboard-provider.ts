@@ -1,5 +1,5 @@
 // DashboardProvider: gerencia o painel completo da Webview
-// Cria uma aba do editor contendo a interface do painel do Antigravity Sync
+// Cria uma aba do editor contendo a interface do painel do Sync Antigravity
 
 import * as vscode from "vscode";
 import GoogleAuth from "../core/google-auth";
@@ -11,8 +11,6 @@ import Logger from "../core/logger";
 /** Estado do painel enviado à Webview */
 interface DashboardState {
     isAuthenticated: boolean;
-    email?: string;
-    picture?: string;
     profiles: Array<{ name: string; fileName: string; modifiedTime?: string; syncKeys?: string[] }> | null;
     syncItems: ISyncItem[];
 }
@@ -76,13 +74,14 @@ export default class DashboardProvider {
 
         this.panel = vscode.window.createWebviewPanel(
             "antigravitysync.dashboard",
-            "Antigravity Sync",
+            "Sync Antigravity",
             vscode.ViewColumn.One,
             {
                 enableScripts: true,
                 retainContextWhenHidden: true,
                 localResourceRoots: [
                     vscode.Uri.joinPath(this.extensionUri, "dist", "webview"),
+                    vscode.Uri.joinPath(this.extensionUri, "images"),
                 ],
             }
         );
@@ -121,26 +120,9 @@ export default class DashboardProvider {
 
         try {
             const isAuthenticated = await this.auth.isAuthenticated();
-            let email: string | undefined;
-            let picture: string | undefined;
-
-            if (isAuthenticated) {
-                try {
-                    const info = await this.auth.getAccountInfo();
-                    email = info?.email;
-                    picture = info?.picture;
-                } catch (error) {
-                    this.logger.error(
-                        "Falha ao buscar as informações da conta",
-                        "DashboardProvider.refreshState",
-                        false,
-                        error
-                    );
-                }
-            }
 
             // Fase 1: envia o estado imediatamente com profiles: null (carregando)
-            const state: DashboardState = { isAuthenticated, email, picture, profiles: null, syncItems: DEFAULT_SYNC_ITEMS };
+            const state: DashboardState = { isAuthenticated, profiles: null, syncItems: DEFAULT_SYNC_ITEMS };
             this.panel.webview.postMessage({ type: "state", data: state });
 
             // Fase 2: carrega os perfis e envia a atualização
@@ -464,6 +446,9 @@ export default class DashboardProvider {
                 "codicon.css"
             )
         );
+        const logoUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(this.extensionUri, "images", "icon.png")
+        );
 
         const nonce = getNonce();
 
@@ -480,14 +465,14 @@ export default class DashboardProvider {
                    img-src ${webview.cspSource} https:;">
     <link href="${codiconsUri}" rel="stylesheet" />
     <link href="${cssUri}" rel="stylesheet" />
-    <title>Antigravity Sync</title>
+    <title>Sync Antigravity</title>
 </head>
 <body>
     <!-- Cabeçalho -->
     <header class="header">
         <div class="header-left">
             <span class="codicon codicon-sync header-icon"></span>
-            <h1 class="header-title">Antigravity Sync</h1>
+            <h1 class="header-title">Sync Antigravity</h1>
         </div>
         <div class="header-right" id="header-user"></div>
     </header>
@@ -497,8 +482,8 @@ export default class DashboardProvider {
         <!-- Sem sessão iniciada -->
         <div id="login-section" class="section login-section" style="display:none;">
             <div class="login-card">
-                <span class="codicon codicon-account login-icon"></span>
-                <h2>Boas-vindas ao Antigravity Sync</h2>
+                <img class="login-logo" src="${logoUri}" alt="Logo do Sync Antigravity" />
+                <h2>Boas-vindas ao Sync Antigravity</h2>
                 <p class="login-desc">Sincronize suas configurações, extensões e atalhos entre dispositivos pelo Google Drive.</p>
                 <button class="btn btn-primary btn-lg" id="btn-login">
                     <span class="codicon codicon-sign-in"></span>

@@ -1,4 +1,4 @@
-// Logger module - OutputChannel wrapper for Antigravity Sync
+// Logger module - OutputChannel wrapper for Sync Antigravity
 // Fixed switch-case fallthrough bug from original extension
 
 import { OutputChannel, window } from "vscode";
@@ -9,7 +9,7 @@ export default class Logger {
 	private development: boolean = false;
 
 	constructor() {
-		this.output = window.createOutputChannel("Antigravity Sync");
+		this.output = window.createOutputChannel("Sync Antigravity");
 	}
 
 	public trace(message: string, origin?: string) {

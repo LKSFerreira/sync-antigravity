@@ -1,4 +1,4 @@
-// Interfaces TypeScript do Antigravity Sync
+// Interfaces TypeScript do Sync Antigravity
 // Arquitetura extensível de sincronização com registro de SyncItem
 
 /** Define um item de sincronização: padrão de registro */

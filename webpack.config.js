@@ -36,10 +36,9 @@ const config = {
         ],
     },
     plugins: [
-        // Inject Google OAuth credentials from .env at build time
+        // Injeta somente o Client ID público do OAuth. Aplicativos desktop não protegem client_secret.
         new webpack.DefinePlugin({
             "process.env.GOOGLE_CLIENT_ID": JSON.stringify(process.env.GOOGLE_CLIENT_ID),
-            "process.env.GOOGLE_CLIENT_SECRET": JSON.stringify(process.env.GOOGLE_CLIENT_SECRET),
         }),
         // Copy webview assets (CSS, JS) và Codicons font vào dist/
         new CopyPlugin({

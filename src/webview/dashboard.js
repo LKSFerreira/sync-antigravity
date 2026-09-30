@@ -1105,7 +1105,7 @@
             : `<span class="codicon codicon-account"></span>`;
         headerUser.innerHTML = `
             ${avatarHtml}
-            <span>${escapeHtml(state.email || "Google")}</span>
+            <span>Conta Google conectada</span>
         `;
 
         // Account info with avatar
@@ -1116,7 +1116,7 @@
                 : `<span class="status-dot status-online"></span>`;
             accountCard.innerHTML = `
                 ${acctAvatar}
-                <span class="account-email">${escapeHtml(state.email || "--")}</span>
+                <span class="account-email">Conta Google conectada</span>
             `;
         }
 

@@ -88,7 +88,7 @@ Clique no botão `$(sync) Sync Antigravity` na barra de status para abrir o pain
 ## Como funciona
 
 1. **Autenticação**: o fluxo OAuth 2.0 abre seu navegador para iniciar sessão com o Google.
-2. **Armazenamento**: os perfis são salvos na [appDataFolder](https://developers.google.com/drive/api/guides/appdata) oculta do Google Drive: ela não é visível à pessoa usuária e não consome a cota de armazenamento.
+2. **Armazenamento**: os perfis são salvos na [appDataFolder](https://developers.google.com/drive/api/guides/appdata) oculta do Google Drive, acessível somente por este aplicativo.
 3. **Sincronização**: configurações, atalhos e snippets são armazenados como conteúdo codificado em base64, preservando comentários e formatação.
 
 ## Configuração
@@ -102,7 +102,8 @@ Clique no botão `$(sync) Sync Antigravity` na barra de status para abrir o pain
 - A sincronização de extensões pede confirmação antes de instalar ou desinstalar extensões.
 - Talvez seja necessário recarregar a janela após baixar um perfil.
 - Os tokens são armazenados com segurança via criptografia do sistema operacional (SecretStorage).
-- As credenciais OAuth são injetadas de `.env` durante a compilação (não ficam no código-fonte).
+- O Client ID OAuth público é injetado de `.env` durante a compilação. A extensão não usa `client_secret`.
+- Consulte [OAuth e privacidade](docs/OAUTH-E-PRIVACIDADE.md) para escopos, retenção de dados e o fluxo de autenticação.
 
 ## Desenvolvimento
 
@@ -110,7 +111,7 @@ Clique no botão `$(sync) Sync Antigravity` na barra de status para abrir o pain
 
 - Node.js 20+
 - [Antigravity IDE](https://www.antigravity.google/) (para testes)
-- ID de cliente OAuth do Google ([Google Cloud Console](https://console.cloud.google.com/apis/credentials): tipo **Aplicativo para computador**)
+- Client ID OAuth do projeto próprio do Sync Antigravity ([Google Cloud Console](https://console.cloud.google.com/apis/credentials): tipo **Aplicativo para computador**)
 
 ### Preparação
 
