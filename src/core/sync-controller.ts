@@ -544,7 +544,15 @@ export default class SyncController {
         }
         await mkdir(dir, { recursive: true });
         for (const [fileName, base64Content] of Object.entries(bundle)) {
-            const filePath = path.join(dir, fileName);
+            if (!this.isSafeSnippetFileName(fileName)) {
+                this.logger.warn(`Nome de snippet ignorado por segurança: ${fileName}`);
+                continue;
+            }
+            const filePath = path.resolve(dir, fileName);
+            if (!filePath.startsWith(`${path.resolve(dir)}${path.sep}`)) {
+                this.logger.warn(`Caminho de snippet bloqueado por segurança: ${fileName}`);
+                continue;
+            }
             await writeFile(filePath, Buffer.from(base64Content, "base64"));
         }
         this.logger.info(`Snippets sincronizados: ${Object.keys(bundle).length} arquivo(s)`);
@@ -554,10 +562,11 @@ export default class SyncController {
     public getExtensionDiff(remoteList: string[]): { toInstall: string[]; toDelete: string[] } {
         const localList = this.getExtensions();
         const localSet = new Set(localList);
-        const remoteSet = new Set(remoteList);
+        const safeRemoteList = remoteList.filter((id) => this.isValidExtensionId(id));
+        const remoteSet = new Set(safeRemoteList);
 
         return {
-            toInstall: remoteList.filter((id) => !localSet.has(id)),
+            toInstall: safeRemoteList.filter((id) => !localSet.has(id)),
             toDelete: localList.filter((id) => !remoteSet.has(id)),
         };
     }
@@ -567,6 +576,10 @@ export default class SyncController {
         let needsReload = false;
 
         for (const id of toDelete) {
+            if (!this.isValidExtensionId(id)) {
+                this.logger.warn(`ID de extensão inválido ignorado: ${id}`);
+                continue;
+            }
             try {
                 await commands.executeCommand("workbench.extensions.uninstallExtension", id);
                 needsReload = true;
@@ -576,6 +589,10 @@ export default class SyncController {
         }
 
         for (const id of toInstall) {
+            if (!this.isValidExtensionId(id)) {
+                this.logger.warn(`ID de extensão inválido ignorado: ${id}`);
+                continue;
+            }
             try {
                 await commands.executeCommand("workbench.extensions.installExtension", id);
                 needsReload = true;
@@ -585,5 +602,21 @@ export default class SyncController {
         }
 
         return needsReload;
+    }
+
+    /** Aceita apenas nomes de arquivo simples que o leitor de snippets também captura. */
+    private isSafeSnippetFileName(fileName: string): boolean {
+        return (
+            typeof fileName === "string" &&
+            !fileName.includes("/") &&
+            !fileName.includes("\\") &&
+            !fileName.includes("..") &&
+            (fileName.endsWith(".json") || fileName.endsWith(".code-snippets"))
+        );
+    }
+
+    /** Valida o formato publisher.name antes de acionar comandos de extensão. */
+    private isValidExtensionId(id: string): boolean {
+        return /^[a-z0-9][a-z0-9-]*\.[a-z0-9][a-z0-9-]*$/i.test(id);
     }
 }

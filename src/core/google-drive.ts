@@ -84,6 +84,7 @@ export default class GoogleDriveService {
 
     /** Obtém um perfil pelo nome da pasta: baixa arquivos conforme syncItems */
     public async getProfile(profileName: string, syncItems: ISyncItem[], onProgress?: ProgressCallback): Promise<IProfile | null> {
+        this.assertValidProfileName(profileName);
         const enabledItems = syncItems.filter(i => i.enabled);
         const steps = ["Localizando perfil", ...enabledItems.map(i => `Baixando ${i.label}`)];
         let stepIdx = 0;
@@ -124,6 +125,7 @@ export default class GoogleDriveService {
 
     /** Salva o perfil: cria ou atualiza a pasta e os arquivos conforme syncItems */
     public async saveProfile(profile: IProfile, syncItems: ISyncItem[], onProgress?: ProgressCallback): Promise<void> {
+        this.assertValidProfileName(profile.profileName);
         let folder = await this.findFolder(profile.profileName);
         const now = new Date().toISOString();
         const isNew = !folder;
@@ -215,6 +217,7 @@ export default class GoogleDriveService {
 
     /** Exclui uma pasta de perfil (e todo seu conteúdo) */
     public async deleteProfile(profileName: string): Promise<void> {
+        this.assertValidProfileName(profileName);
         const folder = await this.findFolder(profileName);
         if (!folder) {
             throw new Error(`Perfil "${profileName}" não encontrado`);
@@ -327,6 +330,13 @@ export default class GoogleDriveService {
     }
 
     // ===== Auxiliares de pasta =====
+
+    /** Impede que nomes recebidos remotamente sejam interpolados na consulta do Drive. */
+    private assertValidProfileName(name: string): void {
+        if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name)) {
+            throw new Error("Nome de perfil inválido");
+        }
+    }
 
     /** Localiza uma pasta pelo nome na raiz de appDataFolder */
     private async findFolder(name: string): Promise<DriveFile | null> {
