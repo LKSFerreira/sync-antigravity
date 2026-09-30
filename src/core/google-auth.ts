@@ -9,7 +9,7 @@ import Logger from "./logger";
 
 // Configuração OAuth: injetada de .env durante a compilação pelo webpack DefinePlugin
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const SCOPES = [
     "https://www.googleapis.com/auth/drive.appdata",
     "https://www.googleapis.com/auth/userinfo.email",
@@ -76,6 +76,11 @@ export default class GoogleAuth {
     /** Inicia o fluxo de login OAuth: abre o navegador e aguarda o retorno */
     public async login(): Promise<void> {
         const state = crypto.randomBytes(16).toString("hex");
+        const codeVerifier = crypto.randomBytes(32).toString("base64url");
+        const codeChallenge = crypto
+            .createHash("sha256")
+            .update(codeVerifier)
+            .digest("base64url");
 
         // Inicia um servidor local para capturar o retorno
         const { port, codePromise } = await this.startCallbackServer(state);
@@ -88,6 +93,8 @@ export default class GoogleAuth {
             response_type: "code",
             scope: SCOPES.join(" "),
             state: state,
+            code_challenge: codeChallenge,
+            code_challenge_method: "S256",
             access_type: "offline", // Obtém refresh_token
             prompt: "consent", // Força a tela de consentimento (garante refresh_token)
         });
@@ -108,7 +115,7 @@ export default class GoogleAuth {
         this.logger.info("Authorization code received, exchanging for tokens...");
 
         // Troca o código por tokens
-        const tokenData = await this.exchangeCodeForTokens(code, redirectUri);
+        const tokenData = await this.exchangeCodeForTokens(code, redirectUri, codeVerifier);
         this.tokens = tokenData;
         await this.saveTokens();
 
@@ -229,15 +236,19 @@ export default class GoogleAuth {
     /** Troca o código de autorização por tokens */
     private async exchangeCodeForTokens(
         code: string,
-        redirectUri: string
+        redirectUri: string,
+        codeVerifier: string
     ): Promise<TokenData> {
         const params = new URLSearchParams({
             code,
             client_id: CLIENT_ID,
-            client_secret: CLIENT_SECRET,
             redirect_uri: redirectUri,
             grant_type: "authorization_code",
+            code_verifier: codeVerifier,
         });
+        if (CLIENT_SECRET) {
+            params.set("client_secret", CLIENT_SECRET);
+        }
 
         const data = await this.httpsPost(TOKEN_URL, params.toString());
         const response = JSON.parse(data);
@@ -263,10 +274,12 @@ export default class GoogleAuth {
 
         const params = new URLSearchParams({
             client_id: CLIENT_ID,
-            client_secret: CLIENT_SECRET,
             refresh_token: this.tokens.refresh_token,
             grant_type: "refresh_token",
         });
+        if (CLIENT_SECRET) {
+            params.set("client_secret", CLIENT_SECRET);
+        }
 
         try {
             const data = await this.httpsPost(TOKEN_URL, params.toString());
