@@ -64,11 +64,12 @@
     "scripts": {
         "compile": "webpack",
         "compile:tsc": "tsc -p ./",
+        "compile:test": "tsc -p tsconfig.test.json",
         "watch": "webpack --watch",
         "package": "webpack --mode production --devtool hidden-source-map",
-        "test:unit": "npm run compile:tsc && node --test out/test/profile-validator.test.js out/test/layout-profile.test.js",
-        "test:integration": "npm run compile:tsc && node --test out/test/layout-state-database.test.js",
-        "test": "npm run test:unit && npm run test:integration"
+        "test:unit": "npm run compile:test && node --test out/test/profile-validator.test.js out/test/layout-profile.test.js",
+        "test:integration": "npm run compile:test && node --test out/test/layout-state-database.test.js",
+        "test": "npm run compile:test && c8 --all --check-coverage --lines 80 --functions 80 --branches 80 --statements 80 --include=out/src/core/profile-validator.js --include=out/src/models/layout-profile.js --include=out/src/core/layout-state-database.js node --test out/test/profile-validator.test.js out/test/layout-profile.test.js out/test/layout-state-database.test.js"
     },
     "devDependencies": {
         "@types/node": "20.19.37",
@@ -76,6 +77,7 @@
         "@types/vscode": "1.90.0",
         "@vscode/codicons": "0.0.36",
         "@vscode/vsce": "3.9.2",
+        "c8": "12.0.0",
         "copy-webpack-plugin": "14.0.0",
         "dotenv": "17.3.1",
         "ts-loader": "9.5.4",

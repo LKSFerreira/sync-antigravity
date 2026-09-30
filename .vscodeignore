@@ -1,6 +1,8 @@
 .vscode/**
 .vscode-test/**
 src/**
+test/**
+coverage/**
 out/**
 node_modules/**
 .gitignore
@@ -11,6 +13,7 @@ images/icon_original.png
 artifacts/**
 .github/**
 tsconfig.json
+tsconfig.test.json
 webpack.config.js
 package-lock.json
 *.map
