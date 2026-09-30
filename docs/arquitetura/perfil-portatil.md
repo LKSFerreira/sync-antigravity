@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementação parcial baseada na inspeção do estado persistido do Antigravity IDE no Windows. O layout global e os workspaces associados ao perfil são extraídos e restaurados somente pelas chaves permitidas, com prévia e rollback local. A validação da restauração completa em uma instância real do Antigravity IDE ainda está pendente.
+Implementação validada em uma instância real do Antigravity IDE no Windows. O layout global e os workspaces associados ao perfil são extraídos e restaurados somente pelas chaves permitidas, com prévia e rollback local.
 
 ## Objetivo
 

@@ -34,7 +34,7 @@ O projeto será aberto, transparente e controlado por este fork. Ele não será 
 - [x] Validar layout recebido antes de restaurar.
 - [x] Criar backup local e usar arquivo temporário durante a restauração.
 - [x] Validar leitura/restauração em cópias temporárias de bancos SQLite.
-- [-] Testar a restauração em uma instância real do Antigravity IDE.
+- [x] Testar a restauração em uma instância real do Antigravity IDE.
 - [x] Adicionar visualização no painel dos itens de layout que serão restaurados.
 - [x] Adicionar comando de rollback a partir do backup local.
 - [x] Permitir associar vários layouts de workspace a perfis diferentes.
