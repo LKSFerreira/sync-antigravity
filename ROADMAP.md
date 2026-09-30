@@ -43,14 +43,14 @@ O projeto será aberto, transparente e controlado por este fork. Ele não será 
 
 ## Fase 2: Segurança da sincronização
 
-- [-] Bloquear path traversal na restauração de snippets.
-- [-] Validar nomes de perfil antes de consultas ao Google Drive.
-- [-] Validar IDs de extensões antes de instalar ou remover.
-- [-] Revalidar dados de layout recebidos do Drive.
-- [ ] Validar estrutura e tamanho de todos os arquivos recebidos do Drive.
-- [ ] Criar backup/rollback transacional para configurações, atalhos e snippets.
-- [ ] Exibir uma prévia completa antes de qualquer restauração.
-- [ ] Adicionar limites de tamanho e mensagens de erro recuperáveis para todos os itens de perfil.
+- [x] Bloquear path traversal na restauração de snippets.
+- [x] Validar nomes de perfil antes de consultas ao Google Drive.
+- [x] Validar IDs de extensões antes de instalar ou remover.
+- [x] Revalidar dados de layout recebidos do Drive.
+- [x] Validar estrutura e tamanho de todos os arquivos recebidos do Drive.
+- [x] Criar backup/rollback transacional para configurações, atalhos e snippets.
+- [x] Exibir uma prévia completa antes de qualquer restauração.
+- [x] Adicionar limites de tamanho e mensagens de erro recuperáveis para todos os itens de perfil.
 
 **Critério de aceite:** uma carga remota malformada não consegue escrever fora dos destinos permitidos, instalar uma extensão inválida ou deixar uma restauração parcialmente aplicada.
 

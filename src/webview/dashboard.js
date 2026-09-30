@@ -249,10 +249,16 @@
         });
     }
 
-    /** Mostra exatamente as chaves e os workspaces que um layout pode restaurar. */
-    function showLayoutRestorePreview(profileName, preview) {
+    /** Mostra todos os itens validados antes de qualquer restauração local. */
+    function showProfileRestorePreview(profileName, preview) {
         return new Promise((resolve) => {
-            const workspaces = Array.isArray(preview.workspaces) ? preview.workspaces : [];
+            const items = Array.isArray(preview.items) ? preview.items : [];
+            const layoutPreview = preview.layout || null;
+            const extensionPreview = preview.extensions || null;
+            const workspaces = Array.isArray(layoutPreview?.workspaces) ? layoutPreview.workspaces : [];
+            const itemList = items.length > 0
+                ? `<ul class="profile-preview-items">${items.map((item) => `<li><span>${escapeHtml(item.label || "Item")}</span><span>${escapeHtml(item.detail || "Validado")}</span></li>`).join('')}</ul>`
+                : '<p class="layout-preview-muted">Nenhum item disponível para restaurar.</p>';
             const workspaceOptions = workspaces.length === 0
                 ? '<p class="layout-preview-muted">Este perfil não contém layout de workspace.</p>'
                 : workspaces.map((item, index) => `
@@ -262,35 +268,54 @@
                         <span>${escapeHtml(item.label)} (${Number(item.entryCount) || 0} itens)</span>
                     </label>
                 `).join('');
-            const globalKeys = Array.isArray(preview.globalKeys) && preview.globalKeys.length > 0
-                ? `<ul class="layout-preview-keys">${preview.globalKeys.map((key) => `<li><code>${escapeHtml(key)}</code></li>`).join('')}</ul>`
+            const globalKeys = Array.isArray(layoutPreview?.globalKeys) && layoutPreview.globalKeys.length > 0
+                ? `<ul class="layout-preview-keys">${layoutPreview.globalKeys.map((key) => `<li><code>${escapeHtml(key)}</code></li>`).join('')}</ul>`
                 : '<p class="layout-preview-muted">Nenhuma chave global foi salva.</p>';
             const workspaceHint = workspaces.length > 1
                 ? '<p class="layout-preview-muted">Escolha qual workspace deve receber o layout neste computador.</p>'
                 : '';
+            const layoutSection = layoutPreview ? `
+                <div class="layout-preview-section">
+                    <div class="sync-item-label">Layout global: ${Number(layoutPreview.globalEntryCount) || 0} itens</div>
+                    ${globalKeys}
+                </div>
+                <div class="layout-preview-section">
+                    <div class="sync-item-label">Layout de workspace</div>
+                    ${workspaceHint}
+                    ${workspaceOptions}
+                </div>
+            ` : '';
+            const formatExtensionIds = (ids) => ids.length === 0
+                ? '<span class="layout-preview-muted">Nenhuma</span>'
+                : `<ul class="profile-preview-extension-list">${ids.slice(0, 20).map((id) => `<li><code>${escapeHtml(id)}</code></li>`).join('')}${ids.length > 20 ? `<li>e mais ${ids.length - 20}</li>` : ''}</ul>`;
+            const extensionSection = extensionPreview ? `
+                <div class="layout-preview-section">
+                    <div class="sync-item-label">Alterações de extensões</div>
+                    <div class="profile-preview-extension-group"><span>Instalar (${Array.isArray(extensionPreview.toInstall) ? extensionPreview.toInstall.length : 0})</span>${formatExtensionIds(Array.isArray(extensionPreview.toInstall) ? extensionPreview.toInstall : [])}</div>
+                    <div class="profile-preview-extension-group"><span>Remover (${Array.isArray(extensionPreview.toDelete) ? extensionPreview.toDelete.length : 0})</span>${formatExtensionIds(Array.isArray(extensionPreview.toDelete) ? extensionPreview.toDelete : [])}</div>
+                    <p class="layout-preview-muted">As extensões só serão alteradas após uma confirmação adicional.</p>
+                </div>
+            ` : '';
             const overlay = document.createElement("div");
             overlay.className = "modal-overlay";
             overlay.innerHTML = `
                 <div class="modal layout-preview-modal">
                     <div class="modal-header modal-header-accent">
-                        <span class="codicon codicon-layout"></span>
-                        <span>Prévia do layout</span>
+                        <span class="codicon codicon-eye"></span>
+                        <span>Prévia da restauração</span>
                     </div>
                     <div class="modal-body">
-                        <p>O perfil <strong>${escapeHtml(profileName)}</strong> restaurará ${Number(preview.globalEntryCount) || 0} itens globais. Um backup local será criado antes da alteração.</p>
+                        <p>O perfil <strong>${escapeHtml(profileName)}</strong> só será aplicado após esta confirmação. Configurações, atalhos e snippets receberão um backup local antes da alteração.</p>
                         <div class="layout-preview-section">
-                            <div class="sync-item-label">Layout global</div>
-                            ${globalKeys}
+                            <div class="sync-item-label">Itens que serão restaurados</div>
+                            ${itemList}
                         </div>
-                        <div class="layout-preview-section">
-                            <div class="sync-item-label">Layout de workspace</div>
-                            ${workspaceHint}
-                            ${workspaceOptions}
-                        </div>
+                        ${layoutSection}
+                        ${extensionSection}
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" data-modal="cancel">Cancelar</button>
-                        <button class="btn btn-accent" data-modal="confirm">Aplicar layout</button>
+                        <button class="btn btn-accent" data-modal="confirm">Restaurar perfil</button>
                     </div>
                 </div>
             `;
@@ -302,7 +327,7 @@
 
             overlay.querySelector("[data-modal='confirm']").addEventListener("click", () => {
                 const selected = overlay.querySelector("input[name='layout-workspace']:checked");
-                if (workspaces.length > 1 && !selected) {
+                if (layoutPreview && workspaces.length > 1 && !selected) {
                     showToast("error", "Selecione o layout de workspace que será restaurado");
                     return;
                 }
@@ -1029,16 +1054,16 @@
             case "filePreview":
                 showFilePreview(msg.fileName, msg.content);
                 break;
-            case "layoutRestorePreview":
-                showLayoutRestorePreview(msg.profileName, msg.preview || {}).then((selection) => {
+            case "profileRestorePreview":
+                showProfileRestorePreview(msg.profileName, msg.preview || {}).then((selection) => {
                     if (selection) {
                         vscode.postMessage({
-                            command: "confirmLayoutRestore",
+                            command: "confirmProfileRestore",
                             restoreId: msg.restoreId,
                             workspaceLayoutId: selection.workspaceLayoutId,
                         });
                     } else {
-                        vscode.postMessage({ command: "cancelLayoutRestore", restoreId: msg.restoreId });
+                        vscode.postMessage({ command: "cancelProfileRestore", restoreId: msg.restoreId });
                     }
                 });
                 break;

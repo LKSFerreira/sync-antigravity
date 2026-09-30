@@ -22,7 +22,8 @@ Sincronize as configurações, extensões, atalhos, snippets e layout do **Antig
 - **Armazenamento no Google Drive**: dados armazenados com segurança em uma pasta oculta específica do aplicativo
 - **Sincronização com um clique**: envie ou baixe toda a configuração em segundos
 - **Multiplataforma**: Windows, macOS e Linux
-- **Segurança**: Google OAuth 2.0 e tokens criptografados pelo sistema operacional via SecretStorage
+- **Segurança**: Google OAuth 2.0, tokens criptografados pelo sistema operacional via SecretStorage e validação estrita de dados remotos
+- **Restauração protegida**: prévia completa antes de aplicar, limites de tamanho e backup transacional de configurações, atalhos e snippets
 - **Avatar do Google**: exibe a foto do perfil do Google no painel
 
 > 📄 Consulte [FEATURES.md](FEATURES.md) para a documentação detalhada dos recursos.

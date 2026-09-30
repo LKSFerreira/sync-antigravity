@@ -382,6 +382,38 @@ body {
     margin-top: 8px;
 }
 
+.profile-preview-items,
+.profile-preview-extension-list {
+    margin: 8px 0 0;
+    padding-left: 0;
+    list-style: none;
+    font-size: 12px;
+}
+
+.profile-preview-items li {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--vscode-panel-border, rgba(255,255,255,0.08));
+}
+
+.profile-preview-items li span:last-child,
+.profile-preview-extension-group,
+.profile-preview-extension-list {
+    color: var(--vscode-descriptionForeground);
+}
+
+.profile-preview-extension-group {
+    margin-top: 8px;
+    font-size: 12px;
+}
+
+.profile-preview-extension-list {
+    padding-left: 18px;
+    list-style: disc;
+}
+
 /* === Login Section === */
 .login-section {
     display: flex;

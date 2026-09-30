@@ -3,6 +3,7 @@
 
 import * as https from "https";
 import { IProfile, IProfileMeta, ISyncItem, ISyncMeta } from "../models/interfaces";
+import { MAX_REMOTE_PROFILE_FILE_BYTES } from "./profile-validator";
 import GoogleAuth from "./google-auth";
 import Logger from "./logger";
 
@@ -10,11 +11,16 @@ const DRIVE_API = "https://www.googleapis.com";
 const DRIVE_FILES = "/drive/v3/files";
 const DRIVE_UPLOAD = "/upload/drive/v3/files";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
+const MAX_SYNC_META_BYTES = 256 * 1024;
+const MAX_PROFILE_META_BYTES = 64 * 1024;
+const MAX_SYNC_META_PROFILES = 256;
+const VALID_SYNC_KEYS = new Set(["settings", "extensions", "keybindings", "snippets", "layout"]);
 
 interface DriveFile {
     id: string;
     name: string;
     mimeType: string;
+    size?: string;
     modifiedTime?: string;
 }
 
@@ -108,13 +114,22 @@ export default class GoogleDriveService {
             const stepLabel = `Baixando ${item.label}`;
             onProgress?.(stepLabel, stepIdx, steps.length, "active");
 
-            const file = files.find(f => f.name === item.fileName);
+            const matchingFiles = files.filter((candidate) => candidate.name === item.fileName);
+            if (matchingFiles.length > 1) {
+                throw new Error(`O perfil contém cópias duplicadas de ${item.fileName}`);
+            }
+            const file = matchingFiles[0];
             if (file) {
+                const declaredSize = Number(file.size);
+                if (Number.isFinite(declaredSize) && declaredSize > MAX_REMOTE_PROFILE_FILE_BYTES) {
+                    throw new Error(`${item.label} remoto excede o tamanho permitido`);
+                }
+                const content = await this.downloadFileContent(file.id, MAX_REMOTE_PROFILE_FILE_BYTES);
                 try {
-                    const content = await this.downloadFileContent(file.id);
                     profile.data[item.key] = JSON.parse(content);
-                } catch {
-                    this.logger.error(`Falha ao analisar ${item.fileName} em ${profileName}`, "getProfile", false);
+                } catch (error) {
+                    this.logger.error(`Falha ao analisar ${item.fileName} em ${profileName}`, "getProfile", false, error);
+                    throw new Error(`${item.label} remoto não contém JSON válido`);
                 }
             }
             onProgress?.(stepLabel, stepIdx++, steps.length, "done");
@@ -196,8 +211,8 @@ export default class GoogleDriveService {
 
             if (metaId) {
                 try {
-                    const metaRaw = await this.downloadFileContent(metaId);
-                    const meta = JSON.parse(metaRaw) as IProfileMeta;
+                    const metaRaw = await this.downloadFileContent(metaId, MAX_PROFILE_META_BYTES);
+                    const meta = this.parseProfileMeta(metaRaw, profile.profileName);
                     meta.updatedAt = now;
                     meta.syncKeys = syncKeys;
                     await this.updateFile(metaId, JSON.stringify(meta, null, 2));
@@ -261,11 +276,12 @@ export default class GoogleDriveService {
     }
 
     /** Baixa o conteúdo bruto de um arquivo pelo ID */
-    public async downloadFileContent(fileId: string): Promise<string> {
+    public async downloadFileContent(fileId: string, maxBytes: number = MAX_REMOTE_PROFILE_FILE_BYTES): Promise<string> {
         const token = await this.auth.getAccessToken();
         return this.httpsGet(
             `${DRIVE_API}${DRIVE_FILES}/${fileId}?alt=media`,
-            token
+            token,
+            maxBytes
         );
     }
 
@@ -276,7 +292,7 @@ export default class GoogleDriveService {
         const token = await this.auth.getAccessToken();
         const params = new URLSearchParams({
             spaces: "appDataFolder",
-            fields: "files(id, name)",
+            fields: "files(id, name, size)",
             q: `name = '${name}' and 'appDataFolder' in parents and mimeType != '${FOLDER_MIME}' and trashed = false`,
         });
         const data = await this.httpsGet(`${DRIVE_API}${DRIVE_FILES}?${params.toString()}`, token);
@@ -289,9 +305,14 @@ export default class GoogleDriveService {
         try {
             const file = await this.findRootFile("sync-meta.json");
             if (!file) { return {}; }
-            const raw = await this.downloadFileContent(file.id);
-            return JSON.parse(raw) as ISyncMeta;
-        } catch {
+            const declaredSize = Number(file.size);
+            if (Number.isFinite(declaredSize) && declaredSize > MAX_SYNC_META_BYTES) {
+                throw new Error("sync-meta.json excede o tamanho permitido");
+            }
+            const raw = await this.downloadFileContent(file.id, MAX_SYNC_META_BYTES);
+            return this.parseSyncMeta(raw);
+        } catch (error) {
+            this.logger.warn(`sync-meta.json ignorado por segurança: ${(error as Error).message}`);
             return {};
         }
     }
@@ -338,12 +359,59 @@ export default class GoogleDriveService {
         }
     }
 
+    /** Aceita somente o índice esperado de perfis e itens reconhecidos. */
+    private parseSyncMeta(raw: string): ISyncMeta {
+        const data = JSON.parse(raw) as unknown;
+        if (!data || typeof data !== "object" || Array.isArray(data)) {
+            throw new Error("sync-meta.json inválido");
+        }
+        const entries = Object.entries(data as Record<string, unknown>);
+        if (entries.length > MAX_SYNC_META_PROFILES) {
+            throw new Error("sync-meta.json contém perfis demais");
+        }
+        const meta: ISyncMeta = {};
+        for (const [profileName, syncKeys] of entries) {
+            this.assertValidProfileName(profileName);
+            if (!Array.isArray(syncKeys) || syncKeys.length === 0 || syncKeys.length > VALID_SYNC_KEYS.size) {
+                throw new Error("Itens de sincronização inválidos em sync-meta.json");
+            }
+            if (syncKeys.some((key) => typeof key !== "string" || !VALID_SYNC_KEYS.has(key)) || new Set(syncKeys).size !== syncKeys.length) {
+                throw new Error("Itens de sincronização inválidos em sync-meta.json");
+            }
+            meta[profileName] = syncKeys;
+        }
+        return meta;
+    }
+
+    /** Valida o meta.json que será reutilizado durante a atualização de um perfil. */
+    private parseProfileMeta(raw: string, expectedProfileName: string): IProfileMeta {
+        const data = JSON.parse(raw) as Partial<IProfileMeta>;
+        if (
+            !data ||
+            typeof data.name !== "string" ||
+            typeof data.createdAt !== "string" ||
+            typeof data.updatedAt !== "string" ||
+            !Number.isFinite(Date.parse(data.createdAt)) ||
+            !Number.isFinite(Date.parse(data.updatedAt)) ||
+            !Array.isArray(data.syncKeys) ||
+            data.syncKeys.some((key) => typeof key !== "string" || !VALID_SYNC_KEYS.has(key)) ||
+            new Set(data.syncKeys).size !== data.syncKeys.length
+        ) {
+            throw new Error("meta.json inválido");
+        }
+        this.assertValidProfileName(data.name);
+        if (data.name !== expectedProfileName) {
+            throw new Error("meta.json pertence a outro perfil");
+        }
+        return data as IProfileMeta;
+    }
+
     /** Localiza uma pasta pelo nome na raiz de appDataFolder */
     private async findFolder(name: string): Promise<DriveFile | null> {
         const token = await this.auth.getAccessToken();
         const params = new URLSearchParams({
             spaces: "appDataFolder",
-            fields: "files(id, name, mimeType)",
+            fields: "files(id, name, mimeType, size)",
             q: `mimeType = '${FOLDER_MIME}' and name = '${name}' and trashed = false`,
         });
 
@@ -410,7 +478,7 @@ export default class GoogleDriveService {
         const token = await this.auth.getAccessToken();
         const params = new URLSearchParams({
             spaces: "appDataFolder",
-            fields: "files(id, name, mimeType)",
+            fields: "files(id, name, mimeType, size)",
             q: `'${folderId}' in parents and trashed = false`,
         });
 
@@ -450,7 +518,11 @@ export default class GoogleDriveService {
 
     // ===== Auxiliares HTTP =====
 
-    private httpsGet(url: string, token: string): Promise<string> {
+    private httpsGet(
+        url: string,
+        token: string,
+        maxBytes: number = MAX_REMOTE_PROFILE_FILE_BYTES
+    ): Promise<string> {
         return new Promise((resolve, reject) => {
             const parsed = new URL(url);
             const options = {
@@ -461,8 +533,22 @@ export default class GoogleDriveService {
             };
             const req = https.request(options, (res) => {
                 let data = "";
-                res.on("data", (chunk) => (data += chunk));
+                let receivedBytes = 0;
+                let rejectedForSize = false;
+                res.on("data", (chunk) => {
+                    receivedBytes += Buffer.byteLength(chunk);
+                    if (receivedBytes > maxBytes) {
+                        rejectedForSize = true;
+                        res.destroy();
+                        reject(new Error("Arquivo remoto excede o tamanho permitido"));
+                        return;
+                    }
+                    data += chunk;
+                });
                 res.on("end", () => {
+                    if (rejectedForSize) {
+                        return;
+                    }
                     if (res.statusCode && res.statusCode >= 400) {
                         reject(
                             new Error(

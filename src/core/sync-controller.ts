@@ -22,7 +22,13 @@ import {
     ILayoutProfile,
     isAllowedGlobalLayoutKey,
     isAllowedWorkspaceLayoutEntry,
+    normalizeLayoutProfile,
 } from "../models/layout-profile";
+import {
+    IProfileRestorePreview,
+    isSafeSnippetFileName,
+    validateRemoteProfile,
+} from "./profile-validator";
 import {
     applyLayoutEntries,
     readGlobalLayoutEntries,
@@ -65,6 +71,19 @@ interface ILayoutChange {
     databasePath: string;
     original: Buffer;
     updated: Uint8Array;
+}
+
+interface IProfileFileChange {
+    name: string;
+    filePath: string;
+    original?: Buffer;
+    updated: Buffer;
+}
+
+interface IProfileBackupManifest {
+    schemaVersion: 1;
+    createdAt: string;
+    files: Array<{ name: string; existed: boolean }>;
 }
 
 export default class SyncController {
@@ -288,39 +307,40 @@ export default class SyncController {
         syncItems: ISyncItem[],
         workspaceLayoutId?: string
     ) {
-        for (const item of syncItems.filter(i => i.enabled)) {
-            switch (item.key) {
-                case "settings": {
-                    const settingsPath: string = this.context.globalState.get("settingsPath")!;
-                    if (profile.data.settings) {
-                        await this.writeConfigRaw(settingsPath, profile.data.settings);
-                    }
-                    break;
-                }
-                case "keybindings": {
-                    const keybindingsPath: string = this.context.globalState.get("keybindingsPath")!;
-                    if (profile.data.keybindings) {
-                        await this.writeConfigRaw(keybindingsPath, profile.data.keybindings);
-                    }
-                    break;
-                }
-                case "snippets": {
-                    if (profile.data.snippets) {
-                        await this.writeSnippets(profile.data.snippets);
-                    }
-                    break;
-                }
-                case "layout": {
-                    if (profile.data.layout) {
-                        await this.restoreLayoutProfile(profile.data.layout, workspaceLayoutId);
-                    }
-                    break;
-                }
-                // As extensões são tratadas pelo provedor (via getExtensionDiff + applyExtensionSync)
-                default:
-                    break;
+        const validated = this.validateIncomingProfile(profile, syncItems).profile;
+        const fileChanges = await this.prepareProfileFileChanges(validated, syncItems);
+        const backupPath = fileChanges.length > 0
+            ? await this.createProfileRestoreBackup(fileChanges)
+            : undefined;
+        const applied: IProfileFileChange[] = [];
+
+        try {
+            for (const change of fileChanges) {
+                await this.replaceFileAtomically(change.filePath, change.updated);
+                applied.push(change);
             }
+            if (Object.prototype.hasOwnProperty.call(validated.data, "layout")) {
+                await this.restoreLayoutProfile(validated.data.layout, workspaceLayoutId);
+            }
+        } catch (error) {
+            await this.rollbackProfileFileChanges(applied);
+            if (backupPath) {
+                this.logger.warn(`Restauração revertida. Backup local preservado em: ${backupPath}`);
+            }
+            throw error;
         }
+
+        if (backupPath) {
+            this.logger.info(`Perfil restaurado. Backup local criado em: ${backupPath}`);
+        }
+    }
+
+    /** Valida um perfil remoto e produz a prévia usada antes da confirmação da pessoa usuária. */
+    public validateIncomingProfile(
+        profile: IProfile,
+        syncItems: ISyncItem[]
+    ): { profile: IProfile; preview: IProfileRestorePreview } {
+        return validateRemoteProfile(profile, syncItems);
     }
 
     /** Lê o arquivo de configuração como base64: preserva comentários/espaços em branco */
@@ -341,17 +361,122 @@ export default class SyncController {
         }
     }
 
-    /** Grava o arquivo de configuração codificado em base64 no disco */
-    private async writeConfigRaw(filePath: string, base64Content: string): Promise<void> {
+    /** Prepara todas as alterações de arquivos antes de escrever a primeira delas. */
+    private async prepareProfileFileChanges(profile: IProfile, syncItems: ISyncItem[]): Promise<IProfileFileChange[]> {
+        const changes: IProfileFileChange[] = [];
+        const enabledKeys = new Set(syncItems.filter((item) => item.enabled).map((item) => item.key));
+        if (enabledKeys.has("settings") && Object.prototype.hasOwnProperty.call(profile.data, "settings")) {
+            const settingsPath = this.context.globalState.get<string>("settingsPath");
+            if (!settingsPath) {
+                throw new Error("Caminho de configurações não definido");
+            }
+            changes.push(await this.createProfileFileChange(
+                "settings.json",
+                settingsPath,
+                Buffer.from(profile.data.settings, "base64")
+            ));
+        }
+        if (enabledKeys.has("keybindings") && Object.prototype.hasOwnProperty.call(profile.data, "keybindings")) {
+            const keybindingsPath = this.context.globalState.get<string>("keybindingsPath");
+            if (!keybindingsPath) {
+                throw new Error("Caminho de atalhos não definido");
+            }
+            changes.push(await this.createProfileFileChange(
+                "keybindings.json",
+                keybindingsPath,
+                Buffer.from(profile.data.keybindings, "base64")
+            ));
+        }
+        if (enabledKeys.has("snippets") && Object.prototype.hasOwnProperty.call(profile.data, "snippets")) {
+            const snippetDirectory = await this.getSnippetDirectory();
+            for (const [fileName, base64Content] of Object.entries(profile.data.snippets as Record<string, string>)) {
+                if (!isSafeSnippetFileName(fileName)) {
+                    throw new Error("Nome de snippet inválido após validação");
+                }
+                const filePath = path.resolve(snippetDirectory, fileName);
+                if (!filePath.startsWith(`${path.resolve(snippetDirectory)}${path.sep}`)) {
+                    throw new Error("Caminho de snippet inválido após validação");
+                }
+                changes.push(await this.createProfileFileChange(
+                    path.join("snippets", fileName),
+                    filePath,
+                    Buffer.from(base64Content, "base64")
+                ));
+            }
+        }
+        return changes;
+    }
+
+    /** Monta uma alteração com o conteúdo original necessário para rollback. */
+    private async createProfileFileChange(
+        name: string,
+        filePath: string,
+        updated: Buffer
+    ): Promise<IProfileFileChange> {
+        return { name, filePath, original: await this.readFileIfExists(filePath), updated };
+    }
+
+    /** Obtém ou cria somente o caminho esperado para snippets, sem depender de dados remotos. */
+    private async getSnippetDirectory(): Promise<string> {
+        return (await SyncController.findConfigDir("snippets", this.logger))
+            ?? SyncController.getConfigPaths("snippets")[0];
+    }
+
+    /** Lê um arquivo existente e distingue ausência de erro de acesso. */
+    private async readFileIfExists(filePath: string): Promise<Buffer | undefined> {
         try {
-            await workspace.fs.writeFile(
-                Uri.file(filePath),
-                Buffer.from(base64Content, "base64")
-            );
-            this.logger.info(`Arquivo de configuração atualizado: ${filePath}`);
-        } catch (error) {
-            this.logger.error(`Falha ao gravar o arquivo de configuração: ${filePath}`, "SyncController.writeConfigRaw", true, error);
+            return await readFile(filePath);
+        } catch (error: any) {
+            if (error?.code === "ENOENT") {
+                return undefined;
+            }
             throw error;
+        }
+    }
+
+    /** Grava o backup local da restauração antes de modificar configurações, atalhos ou snippets. */
+    private async createProfileRestoreBackup(changes: IProfileFileChange[]): Promise<string> {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const backupPath = path.join(this.context.globalStorageUri.fsPath, "profile-backups", timestamp);
+        await mkdir(backupPath, { recursive: true });
+        for (const change of changes) {
+            if (change.original === undefined) {
+                continue;
+            }
+            const backupFilePath = path.join(backupPath, change.name);
+            await mkdir(path.dirname(backupFilePath), { recursive: true });
+            await writeFile(backupFilePath, change.original, { flag: "wx" });
+        }
+        const manifest: IProfileBackupManifest = {
+            schemaVersion: 1,
+            createdAt: new Date().toISOString(),
+            files: changes.map((change) => ({ name: change.name, existed: change.original !== undefined })),
+        };
+        await writeFile(path.join(backupPath, "manifest.json"), JSON.stringify(manifest, null, 2), { flag: "wx" });
+        return backupPath;
+    }
+
+    /** Reverte somente os arquivos já alterados quando uma etapa posterior falhar. */
+    private async rollbackProfileFileChanges(changes: IProfileFileChange[]): Promise<void> {
+        for (const change of changes.reverse()) {
+            try {
+                if (change.original === undefined) {
+                    await unlink(change.filePath).catch((error: any) => {
+                        if (error?.code !== "ENOENT") {
+                            throw error;
+                        }
+                    });
+                } else {
+                    await this.replaceFileAtomically(change.filePath, change.original);
+                }
+            } catch (rollbackError) {
+                this.logger.error(
+                    `Falha ao reverter ${change.name}`,
+                    "SyncController.rollbackProfileFileChanges",
+                    false,
+                    rollbackError
+                );
+            }
         }
     }
 
@@ -678,10 +803,16 @@ export default class SyncController {
 
     /** Substitui um banco somente após gravar uma cópia temporária completa. */
     private async replaceDatabaseAtomically(databasePath: string, content: Uint8Array): Promise<void> {
-        const temporaryPath = `${databasePath}.antigravity-sync.tmp`;
+        await this.replaceFileAtomically(databasePath, Buffer.from(content));
+    }
+
+    /** Substitui um arquivo somente após gravar uma cópia temporária completa. */
+    private async replaceFileAtomically(filePath: string, content: Uint8Array): Promise<void> {
+        await mkdir(path.dirname(filePath), { recursive: true });
+        const temporaryPath = `${filePath}.antigravity-sync.tmp`;
         try {
             await writeFile(temporaryPath, Buffer.from(content), { flag: "wx" });
-            await rename(temporaryPath, databasePath);
+            await rename(temporaryPath, filePath);
         } catch (error) {
             await unlink(temporaryPath).catch(() => undefined);
             throw error;
@@ -713,16 +844,7 @@ export default class SyncController {
 
     /** Revalida dados recebidos do Drive antes de alterar o estado local. */
     private parseLayoutProfile(data: unknown): ILayoutProfile {
-        if (!data || typeof data !== "object") {
-            throw new Error("Dados de layout inválidos");
-        }
-
-        const candidate = data as Partial<ILayoutProfile>;
-        if (candidate.schemaVersion !== 1 || !candidate.global) {
-            throw new Error("Versão de layout incompatível");
-        }
-
-        return createLayoutProfile(candidate.global, getWorkspaceLayouts(candidate as ILayoutProfile));
+        return normalizeLayoutProfile(data);
     }
 
     // ===== Auxiliares de snippets =====
@@ -759,29 +881,6 @@ export default class SyncController {
             // A pasta não existe ou está vazia
         }
         return bundle;
-    }
-
-    /** Grava os snippets agrupados de volta em arquivos individuais */
-    private async writeSnippets(bundle: Record<string, string>): Promise<void> {
-        let dir = await SyncController.findConfigDir("snippets", this.logger);
-        if (!dir) {
-            // Alternativa: cria no primeiro caminho candidato
-            dir = SyncController.getConfigPaths("snippets")[0];
-        }
-        await mkdir(dir, { recursive: true });
-        for (const [fileName, base64Content] of Object.entries(bundle)) {
-            if (!this.isSafeSnippetFileName(fileName)) {
-                this.logger.warn(`Nome de snippet ignorado por segurança: ${fileName}`);
-                continue;
-            }
-            const filePath = path.resolve(dir, fileName);
-            if (!filePath.startsWith(`${path.resolve(dir)}${path.sep}`)) {
-                this.logger.warn(`Caminho de snippet bloqueado por segurança: ${fileName}`);
-                continue;
-            }
-            await writeFile(filePath, Buffer.from(base64Content, "base64"));
-        }
-        this.logger.info(`Snippets sincronizados: ${Object.keys(bundle).length} arquivo(s)`);
     }
 
     /** Compara extensões locais e remotas: retorna as diferenças para confirmação do provedor */
@@ -828,17 +927,6 @@ export default class SyncController {
         }
 
         return needsReload;
-    }
-
-    /** Aceita apenas nomes de arquivo simples que o leitor de snippets também captura. */
-    private isSafeSnippetFileName(fileName: string): boolean {
-        return (
-            typeof fileName === "string" &&
-            !fileName.includes("/") &&
-            !fileName.includes("\\") &&
-            !fileName.includes("..") &&
-            (fileName.endsWith(".json") || fileName.endsWith(".code-snippets"))
-        );
     }
 
     /** Valida o formato publisher.name antes de acionar comandos de extensão. */

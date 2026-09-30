@@ -34,7 +34,7 @@ interface WebviewMessage {
     workspaceLayoutId?: string;
 }
 
-interface PendingLayoutRestore {
+interface PendingProfileRestore {
     profile: IProfile;
     profileName: string;
     syncItems: ISyncItem[];
@@ -48,8 +48,8 @@ export default class DashboardProvider {
     private readonly controller: SyncController;
     private readonly logger: Logger;
     private readonly context: vscode.ExtensionContext;
-    private readonly pendingLayoutRestores = new Map<string, PendingLayoutRestore>();
-    private layoutRestoreSequence = 0;
+    private readonly pendingProfileRestores = new Map<string, PendingProfileRestore>();
+    private profileRestoreSequence = 0;
 
     constructor(
         context: vscode.ExtensionContext,
@@ -245,35 +245,34 @@ export default class DashboardProvider {
                         sendLoading(`pull-${profileName}`, false);
                         return;
                     }
-                    const layoutEnabled = syncItems.some((item) => item.key === "layout" && item.enabled);
-                    if (layoutEnabled && profile.data.layout) {
-                        const restoreId = String(++this.layoutRestoreSequence);
-                        const preview = this.controller.getLayoutRestorePreview(profile.data.layout);
-                        this.pendingLayoutRestores.set(restoreId, { profile, profileName, syncItems });
-                        this.panel?.webview.postMessage({ type: "syncDone" });
-                        sendLoading(`pull-${profileName}`, false);
-                        this.panel?.webview.postMessage({
-                            type: "layoutRestorePreview",
-                            restoreId,
-                            profileName,
-                            preview,
-                        });
-                        break;
+                    const validated = this.controller.validateIncomingProfile(profile, syncItems);
+                    if (Array.isArray(validated.profile.data.extensions)) {
+                        validated.preview.extensions = this.controller.getExtensionDiff(validated.profile.data.extensions);
                     }
-
-                    await this.completeProfilePull(profile, profileName, syncItems, undefined, sendToast);
+                    const restoreId = String(++this.profileRestoreSequence);
+                    this.pendingProfileRestores.set(restoreId, {
+                        profile: validated.profile,
+                        profileName,
+                        syncItems,
+                    });
                     this.panel?.webview.postMessage({ type: "syncDone" });
                     sendLoading(`pull-${profileName}`, false);
+                    this.panel?.webview.postMessage({
+                        type: "profileRestorePreview",
+                        restoreId,
+                        profileName,
+                        preview: validated.preview,
+                    });
                     break;
                 }
 
-                case "confirmLayoutRestore": {
+                case "confirmProfileRestore": {
                     if (!message.restoreId) { return; }
-                    const pending = this.pendingLayoutRestores.get(message.restoreId);
+                    const pending = this.pendingProfileRestores.get(message.restoreId);
                     if (!pending) {
-                        throw new Error("A prévia de layout expirou. Baixe o perfil novamente.");
+                        throw new Error("A prévia do perfil expirou. Baixe o perfil novamente.");
                     }
-                    this.pendingLayoutRestores.delete(message.restoreId);
+                    this.pendingProfileRestores.delete(message.restoreId);
                     sendLoading(`pull-${pending.profileName}`, true);
                     this.panel?.webview.postMessage({ type: "syncStart", title: `Aplicando "${pending.profileName}"` });
                     await this.completeProfilePull(
@@ -288,9 +287,9 @@ export default class DashboardProvider {
                     break;
                 }
 
-                case "cancelLayoutRestore":
+                case "cancelProfileRestore":
                     if (message.restoreId) {
-                        this.pendingLayoutRestores.delete(message.restoreId);
+                        this.pendingProfileRestores.delete(message.restoreId);
                     }
                     sendToast("info", "Aplicação do perfil cancelada");
                     break;
@@ -427,10 +426,11 @@ export default class DashboardProvider {
         workspaceLayoutId: string | undefined,
         sendToast: (level: "info" | "success" | "error", text: string) => void
     ): Promise<void> {
-        await this.controller.updateLocalProfile(profile, syncItems, workspaceLayoutId);
+        const validatedProfile = this.controller.validateIncomingProfile(profile, syncItems).profile;
+        await this.controller.updateLocalProfile(validatedProfile, syncItems, workspaceLayoutId);
 
         const extEnabled = syncItems.find((item) => item.key === "extensions")?.enabled;
-        const extData = profile.data.extensions;
+        const extData = validatedProfile.data.extensions;
         if (extEnabled && extData && Array.isArray(extData)) {
             const diff = this.controller.getExtensionDiff(extData);
             if (diff.toInstall.length > 0 || diff.toDelete.length > 0) {

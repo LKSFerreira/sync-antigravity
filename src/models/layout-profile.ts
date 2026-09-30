@@ -230,3 +230,16 @@ export function createLayoutProfile(
         workspaces: createWorkspaceLayoutsDocument(workspaces),
     };
 }
+
+/** Normaliza um layout remoto e preserva compatibilidade com o formato de workspace único. */
+export function normalizeLayoutProfile(data: unknown): ILayoutProfile {
+    if (!data || typeof data !== "object") {
+        throw new Error("Dados de layout inválidos");
+    }
+
+    const candidate = data as Partial<ILayoutProfile>;
+    if (candidate.schemaVersion !== 1 || !candidate.global) {
+        throw new Error("Versão de layout incompatível");
+    }
+    return createLayoutProfile(candidate.global, getWorkspaceLayouts(candidate as ILayoutProfile));
+}
