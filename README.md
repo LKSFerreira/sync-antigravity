@@ -1,10 +1,11 @@
-# Antigravity Sync
+# Sync Antigravity
 
-[![Open VSX Version](https://img.shields.io/open-vsx/v/thotam/antigravity-sync)](https://open-vsx.org/extension/thotam/antigravity-sync)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
-[![GitHub](https://img.shields.io/badge/GitHub-thotam%2Fantigravity--sync-blue)](https://github.com/thotam/antigravity-sync)
+[![GitHub](https://img.shields.io/badge/GitHub-LKSFerreira%2Fsync--antigravity-blue)](https://github.com/LKSFerreira/sync-antigravity)
 
 Sincronize as configurações, extensões, atalhos e snippets do **Antigravity** entre dispositivos usando o **Google Drive**.
+
+> **Fork independente**: mantido por [LKSFerreira](https://github.com/LKSFerreira), derivado de [thotam/antigravity-sync](https://github.com/thotam/antigravity-sync) e distribuído sob a licença MIT.
 
 > **Observação**: esta extensão foi projetada exclusivamente para o [Antigravity IDE](https://www.antigravity.google/). Um aviso será exibido se ela for usada em outros editores.
 
@@ -12,7 +13,7 @@ Sincronize as configurações, extensões, atalhos e snippets do **Antigravity**
 
 - **Painel completo**: painel moderno em Webview com informações da conta, gerenciamento de perfis e ações rápidas
 - **Perfis baseados em pastas**: cada perfil fica em uma pasta própria, com arquivos de configuração separados para facilitar a extensibilidade
-- **Seleção de itens**: escolha, em cada operação, o que sincronizar: configurações, extensões, atalhos e snippets
+- **Seleção de itens**: escolha, em cada operação, o que sincronizar: configurações, extensões, atalhos, snippets e layout
 - **Modal de progresso**: acompanhamento em tempo real, etapa por etapa, com barra de progresso animada
 - **Confirmação de extensões**: modal na Webview mostra extensões a instalar ou remover antes da aplicação
 - **Carregamento progressivo**: o painel aparece imediatamente e os dados são carregados gradualmente
@@ -38,11 +39,11 @@ Sincronize as configurações, extensões, atalhos e snippets do **Antigravity**
 
 ### Pelo registro Open VSX
 
-Pesquise por **"Antigravity Sync"** no painel Extensões ou instale diretamente pelo [open-vsx.org](https://open-vsx.org/extension/thotam/antigravity-sync).
+Após a publicação, pesquise por **"Sync Antigravity"** no painel Extensões ou instale pela página da extensão no Open VSX.
 
 ### Pelo VSIX
 
-1. Baixe o arquivo `.vsix` em [Releases](https://github.com/thotam/antigravity-sync/releases).
+1. Baixe o arquivo `.vsix` em [Releases](https://github.com/LKSFerreira/sync-antigravity/releases).
 2. Abra Antigravity: Extensões: `...`: **Instalar do VSIX**.
 
 ## Requisitos
@@ -55,7 +56,7 @@ Pesquise por **"Antigravity Sync"** no painel Extensões ou instale diretamente 
 ### Configuração inicial
 
 1. Instale a extensão.
-2. Clique no botão da **barra de status** ou execute `Antigravity Sync: Abrir painel`.
+2. Clique no botão da **barra de status** ou execute `Sync Antigravity: Abrir painel`.
 3. Clique em **Iniciar sessão com o Google**: autorize no navegador: pronto!
 
 ### Comando
@@ -64,13 +65,13 @@ Abra a Paleta de Comandos (`Ctrl+Shift+P` / `Cmd+Shift+P`):
 
 | Comando                              | Descrição              |
 | ------------------------------------ | ------------------------ |
-| **Antigravity Sync: Abrir painel** | Abre o painel |
+| **Sync Antigravity: Abrir painel** | Abre o painel |
 
 Todo o gerenciamento de perfis (criar, baixar, enviar e excluir), as ações da conta (iniciar e encerrar sessão) e as configurações estão disponíveis diretamente na interface do painel.
 
 ### Barra de status
 
-Clique no botão `$(sync) Antigravity Sync` na barra de status para abrir o painel rapidamente.
+Clique no botão `$(sync) Sync Antigravity` na barra de status para abrir o painel rapidamente.
 
 ### Recursos do painel
 
@@ -110,8 +111,8 @@ Clique no botão `$(sync) Antigravity Sync` na barra de status para abrir o pain
 ### Preparação
 
 ```bash
-git clone https://github.com/thotam/antigravity-sync.git
-cd antigravity-sync
+git clone https://github.com/LKSFerreira/sync-antigravity.git
+cd sync-antigravity
 npm install
 cp .env.example .env   # Preencha suas credenciais OAuth do Google
 ```
@@ -134,20 +135,20 @@ npm run package                # Compilação de produção com Webpack
 
 ```bash
 npx -y @vscode/vsce package --allow-missing-repository
-# Saída: antigravity-sync-x.x.x.vsix
+# Saída: sync-antigravity-x.x.x.vsix
 ```
 
 ### Publicar no Open VSX
 
 ```bash
-npx -y ovsx publish antigravity-sync-x.x.x.vsix -p <YOUR_OPENVSX_TOKEN>
+npx -y ovsx publish sync-antigravity-x.x.x.vsix -p <YOUR_OPENVSX_TOKEN>
 ```
 
 Obtenha o token em: [open-vsx.org/user-settings/tokens](https://open-vsx.org/user-settings/tokens)
 
 ### Criar uma release no GitHub
 
-1. Acesse [Releases: New release](https://github.com/thotam/antigravity-sync/releases/new).
+1. Acesse [Releases: New release](https://github.com/LKSFerreira/sync-antigravity/releases/new).
 2. Crie a tag: `vX.X.X`.
 3. Título: `vX.X.X - Descrição`.
 4. Envie o arquivo `.vsix` como ativo.
@@ -222,13 +223,13 @@ src/
 
 ## Como contribuir
 
-Contribuições são bem-vindas! Abra uma issue ou envie um pull request no [GitHub](https://github.com/thotam/antigravity-sync).
+Contribuições são bem-vindas! Abra uma issue ou envie um pull request no [GitHub](https://github.com/LKSFerreira/sync-antigravity).
 
 ## Links
 
-- 📦 [Open VSX Registry](https://open-vsx.org/extension/thotam/antigravity-sync)
-- 🐛 [Relatar problemas](https://github.com/thotam/antigravity-sync/issues)
-- 📜 [Código-fonte](https://github.com/thotam/antigravity-sync)
+- 📦 Open VSX: disponível após a primeira publicação
+- 🐛 [Relatar problemas](https://github.com/LKSFerreira/sync-antigravity/issues)
+- 📜 [Código-fonte](https://github.com/LKSFerreira/sync-antigravity)
 
 ## Licença
 

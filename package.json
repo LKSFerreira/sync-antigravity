@@ -1,15 +1,22 @@
 {
-    "name": "antigravity-sync",
-    "displayName": "Antigravity Sync",
+    "name": "sync-antigravity",
+    "displayName": "Sync Antigravity",
     "description": "Sincronize configurações, extensões, atalhos e snippets do Antigravity entre dispositivos usando o Google Drive",
     "version": "0.7.4",
-    "publisher": "thotam",
+    "publisher": "lksferreira",
+    "author": {
+        "name": "LKSFerreira"
+    },
     "icon": "images/icon.png",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/thotam/antigravity-sync"
+        "url": "https://github.com/LKSFerreira/sync-antigravity.git"
     },
+    "bugs": {
+        "url": "https://github.com/LKSFerreira/sync-antigravity/issues"
+    },
+    "homepage": "https://github.com/LKSFerreira/sync-antigravity#readme",
     "engines": {
         "vscode": "^1.90.0"
     },
@@ -35,11 +42,11 @@
             {
                 "command": "antigravitysync.showDashboard",
                 "title": "Abrir painel",
-                "category": "Antigravity Sync"
+                "category": "Sync Antigravity"
             }
         ],
         "configuration": {
-            "title": "Antigravity Sync",
+            "title": "Sync Antigravity",
             "properties": {
                 "antigravitysync.excludeExtensions": {
                     "type": "array",
