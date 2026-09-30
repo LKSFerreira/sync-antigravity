@@ -1,0 +1,55 @@
+name: Verificação contínua
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    name: Testar e empacotar VSIX
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Obter código
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências travadas
+        run: npm ci
+
+      - name: Auditar dependências
+        run: npm audit --audit-level=high
+
+      - name: Compilar e testar
+        run: npm test
+
+      - name: Gerar bundle de produção
+        run: npm run package
+
+      - name: Gerar VSIX
+        run: npx --no-install vsce package --out artifacts/sync-antigravity.vsix
+
+      - name: Validar conteúdo do VSIX
+        run: |
+          unzip -Z1 artifacts/sync-antigravity.vsix | tee artifacts/vsix-files.txt
+          grep -Fx 'extension/dist/sql-wasm.wasm' artifacts/vsix-files.txt
+          ! grep -E '(^|/)(\.env|client_secret_|preview-login-success\.html|icon_original\.png)' artifacts/vsix-files.txt
+
+      - name: Gerar hash SHA-256
+        run: sha256sum artifacts/sync-antigravity.vsix > artifacts/SHA256SUMS
+
+      - name: Guardar artefatos verificados
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sync-antigravity-vsix
+          path: artifacts/
+          if-no-files-found: error

@@ -70,14 +70,14 @@ O projeto será aberto, transparente e controlado por este fork. Ele não será 
 
 - [x] Fixar `sql.js` e suas definições de tipos no manifesto e no lockfile.
 - [x] Fixar as demais dependências de desenvolvimento no manifesto e no lockfile.
-- [-] Confirmar que o VSIX inclui o WebAssembly necessário ao layout.
+- [x] Confirmar que o VSIX inclui o WebAssembly necessário ao layout.
 - [x] Confirmar ausência de vulnerabilidades nas dependências de produção.
-- [ ] Adicionar testes unitários para validação de perfil, snippets, extensões e layout.
-- [ ] Adicionar testes de integração usando bancos SQLite temporários.
-- [ ] Adicionar GitHub Actions: `npm ci`, TypeScript, build, testes e empacotamento do VSIX.
-- [ ] Adicionar CodeQL, Dependabot e secret scanning.
-- [ ] Publicar hash SHA-256 do VSIX em cada release.
-- [ ] Garantir que somente tags de release possam publicar artefatos.
+- [x] Adicionar testes unitários para validação de perfil, snippets, extensões e layout.
+- [x] Adicionar testes de integração usando bancos SQLite temporários.
+- [x] Adicionar GitHub Actions: `npm ci`, TypeScript, build, testes e empacotamento do VSIX.
+- [x] Adicionar CodeQL, Dependabot e secret scanning.
+- [x] Publicar hash SHA-256 do VSIX em cada release.
+- [x] Garantir que somente tags de release possam publicar artefatos.
 
 **Critério de aceite:** qualquer VSIX publicado é rastreável a um commit e a uma execução de CI verificável.
 

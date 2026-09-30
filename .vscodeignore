@@ -5,10 +5,16 @@ out/**
 node_modules/**
 .gitignore
 .env*
+client_secret_*.apps.googleusercontent.com.json
+preview-login-success.html
+images/icon_original.png
+artifacts/**
+.github/**
 tsconfig.json
 webpack.config.js
 package-lock.json
 *.map
+dist/**/*.map
 .gitnexus/**
 .claude/**
 AGENTS.md
