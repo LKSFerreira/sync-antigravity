@@ -1,16 +1,42 @@
-node_modules/
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
 out/
-dist/
+dist
+dist-ssr
 coverage/
 *.vsix
 .vscode-test/
+*.local
 .env
+.env.homologacao
+
 # Credenciais OAuth baixadas do Google Cloud nunca devem entrar no repositório.
-client_secret_*.apps.googleusercontent.com.json
+client_secret*.json
+
 # Prévia local para ajustar manualmente o efeito de sucesso do login.
 preview-login-success.html
+
+# Editor directories and files
+.vscode/*
+!.vscode/settings.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Ferramentas locais sem relação com o harness versionado.
 .gitnexus
 .claude/
-AGENTS.md
-CLAUDE.md
-
+# Local generated template test outputs
+.tmp-init-*
