@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Sincronize configurações, extensões, atalhos, snippets e layout do Antigravity IDE entre seus dispositivos com o Google Drive." />
+    <title>Sync Antigravity - Seu ambiente, em qualquer máquina</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Sync Antigravity - início">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>Sync Antigravity</span>
+      </a>
+      <nav aria-label="Navegação principal">
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#seguranca">Segurança</a>
+        <a href="#perguntas">Perguntas</a>
+        <a class="button button-small" href="#comecar">Começar</a>
+      </nav>
+    </header>
+
+    <main id="conteudo">
+      <section class="hero" aria-labelledby="titulo-principal">
+        <div class="hero-copy">
+          <p class="eyebrow">Para o Antigravity IDE</p>
+          <h1 id="titulo-principal">Seu ambiente de desenvolvimento. Onde você precisar.</h1>
+          <p class="hero-description">O Sync Antigravity guarda um perfil do seu Antigravity no espaço privado da sua conta Google. Ao abrir outra máquina, você aplica o perfil e retoma seu ambiente com confiança.</p>
+          <div class="hero-actions">
+            <a class="button" href="#comecar">Ver o guia de início</a>
+            <a class="button button-quiet" href="https://github.com/LKSFerreira/sync-antigravity" rel="noreferrer">Ver código no GitHub</a>
+          </div>
+          <p class="microcopy">Código aberto, licença MIT e sem servidor próprio.</p>
+        </div>
+        <div class="hero-visual" aria-label="Ilustração de sincronização entre dois computadores">
+          <div class="device device-left"><span></span><span></span><span></span></div>
+          <div class="sync-orbit" aria-hidden="true"><b>↻</b></div>
+          <div class="device device-right"><span></span><span></span><span></span></div>
+          <p>Um perfil. Seus dispositivos.</p>
+        </div>
+      </section>
+
+      <section class="section section-muted" aria-labelledby="problema-titulo">
+        <div class="section-intro narrow">
+          <p class="eyebrow">O problema</p>
+          <h2 id="problema-titulo">Recriar tudo manualmente não deveria fazer parte de trocar de computador.</h2>
+          <p>Extensões, atalhos, configurações e organização visual levam tempo para ficar do jeito certo. Um perfil permite guardar essa configuração e aplicá-la novamente sem procurar arquivos ou escolher pastas desconhecidas.</p>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="sincroniza-titulo">
+        <div class="section-intro">
+          <p class="eyebrow">O que entra no perfil</p>
+          <h2 id="sincroniza-titulo">Você escolhe o que quer sincronizar.</h2>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">⚙</span><h3>Configurações</h3><p>Preferências do arquivo <code>settings.json</code>, preservadas para o seu próximo ambiente.</p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">⌨</span><h3>Atalhos</h3><p>Seus atalhos de teclado, para que seus comandos continuem onde sua memória espera.</p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">◫</span><h3>Extensões</h3><p>A lista é comparada antes da aplicação e você confirma as instalações ou remoções.</p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">▣</span><h3>Snippets</h3><p>Seus trechos reutilizáveis seguem com você entre máquinas.</p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">▤</span><h3>Layout</h3><p>O layout permitido é exibido em prévia e recebe backup local antes de ser aplicado.</p></article>
+          <article class="feature-card"><span class="feature-icon" aria-hidden="true">☁</span><h3>Perfis</h3><p>Crie perfis diferentes, como “IDE Principal” e “Notebook pessoal”, para cada contexto.</p></article>
+        </div>
+      </section>
+
+      <section class="section section-guide" id="comecar" aria-labelledby="guia-titulo">
+        <div class="section-intro">
+          <p class="eyebrow">Tutorial rápido</p>
+          <h2 id="guia-titulo">Configure uma vez. Aplique quando precisar.</h2>
+        </div>
+        <ol class="steps">
+          <li><span>1</span><div><h3>Instale a extensão</h3><p>No Antigravity, procure por <strong>Sync Antigravity</strong> no painel de extensões. Enquanto a loja não estiver disponível, instale o VSIX da página de releases.</p></div></li>
+          <li><span>2</span><div><h3>Entre com sua conta Google</h3><p>Abra o painel do Sync Antigravity e escolha <strong>Iniciar sessão com o Google</strong>. A permissão solicitada serve apenas para o espaço privado de dados da aplicação.</p></div></li>
+          <li><span>3</span><div><h3>Crie seu primeiro perfil</h3><p>Dê um nome reconhecível, escolha os itens que deseja guardar e confirme. O perfil é enviado para o Google Drive privado da sua conta.</p></div></li>
+          <li><span>4</span><div><h3>Mantenha-o atualizado</h3><p>Quando mudar suas preferências, atalhos ou layout, selecione <strong>Atualizar</strong> no mesmo perfil. Não é necessário criar outro.</p></div></li>
+          <li><span>5</span><div><h3>Aplique em outra máquina</h3><p>Instale a extensão, entre na mesma conta e selecione <strong>Aplicar</strong> no perfil desejado. Revise a prévia e reinicie a janela do Antigravity quando a extensão solicitar.</p></div></li>
+        </ol>
+      </section>
+
+      <section class="section section-muted" id="como-funciona" aria-labelledby="aplicar-titulo">
+        <div class="two-column">
+          <div>
+            <p class="eyebrow">Antes de qualquer mudança</p>
+            <h2 id="aplicar-titulo">Aplicar não é copiar arquivos aleatoriamente.</h2>
+            <p>O Sync Antigravity encontra os caminhos corretos da instalação atual. Antes de modificar configurações, atalhos, snippets, extensões ou layout, ele mostra uma prévia do que será feito.</p>
+          </div>
+          <ul class="check-list">
+            <li><span aria-hidden="true">✓</span> Confirmação antes de alterar extensões</li>
+            <li><span aria-hidden="true">✓</span> Backup local antes de aplicar configurações</li>
+            <li><span aria-hidden="true">✓</span> Prévia dos itens de layout permitidos</li>
+            <li><span aria-hidden="true">✓</span> Reinicialização solicitada quando necessária</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section" id="seguranca" aria-labelledby="seguranca-titulo">
+        <div class="security-panel">
+          <div>
+            <p class="eyebrow">Privacidade por padrão</p>
+            <h2 id="seguranca-titulo">Seus dados ficam na sua conta.</h2>
+            <p>Os perfis são armazenados no <code>appDataFolder</code>: a área privada do Google Drive reservada ao aplicativo. Eles não aparecem nos seus arquivos comuns do Drive.</p>
+          </div>
+          <dl>
+            <div><dt>Permissão Google</dt><dd>Apenas <code>drive.appdata</code>.</dd></div>
+            <div><dt>Tokens</dt><dd>Guardados localmente no armazenamento seguro da IDE.</dd></div>
+            <div><dt>Telemetria</dt><dd>Não coletamos telemetria nem vendemos dados.</dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="section section-muted" id="perguntas" aria-labelledby="perguntas-titulo">
+        <div class="section-intro"><p class="eyebrow">Perguntas frequentes</p><h2 id="perguntas-titulo">Sem letras pequenas.</h2></div>
+        <div class="faq">
+          <details><summary>Preciso usar o mesmo computador?</summary><p>Não. Instale o Sync Antigravity em outro computador, entre na mesma conta Google e aplique o perfil.</p></details>
+          <details><summary>As extensões são instaladas sem eu saber?</summary><p>Não. A extensão mostra as alterações de extensões e pede confirmação antes de aplicá-las.</p></details>
+          <details><summary>Posso ter mais de um perfil?</summary><p>Sim. Perfis diferentes ajudam a separar, por exemplo, a IDE principal de um notebook ou de um ambiente de trabalho.</p></details>
+          <details><summary>Posso desfazer um layout aplicado?</summary><p>Sim. Use o comando <strong>Sync Antigravity: Reverter último layout</strong> para restaurar o backup local mais recente.</p></details>
+          <details><summary>O que acontece se eu encerrar a sessão?</summary><p>O token local é removido. Seus perfis permanecem no espaço privado da sua conta Google até serem excluídos por você.</p></details>
+        </div>
+      </section>
+
+      <section class="section closing" aria-labelledby="encerramento-titulo">
+        <p class="eyebrow">Pronto para começar?</p>
+        <h2 id="encerramento-titulo">Seu ambiente merece ser portátil.</h2>
+        <p>Instale a extensão, crie um perfil e deixe a próxima troca de computador ser simples.</p>
+        <a class="button" href="https://github.com/LKSFerreira/sync-antigravity/releases" rel="noreferrer">Ver releases no GitHub</a>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>Sync Antigravity</span></a>
+      <div><a href="privacidade/">Política de Privacidade</a><a href="termos/">Termos de Serviço</a><a href="https://github.com/LKSFerreira/sync-antigravity" rel="noreferrer">GitHub</a></div>
+      <p>Distribuído sob a licença MIT.</p>
+    </footer>
+  </body>
+</html>
