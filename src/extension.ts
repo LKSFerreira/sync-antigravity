@@ -60,7 +60,7 @@ export async function activate(ctx: vscode.ExtensionContext) {
         const drive = new GoogleDriveService(auth, logger);
 
         // Inicializa o provedor do painel
-        const dashboard = new DashboardProvider(ctx, auth, drive, controller, logger);
+        const dashboard = new DashboardProvider(ctx, auth, drive, controller, logger, updateStatusBar);
 
         // Atualiza a barra de status com base no estado de autenticação
         async function updateStatusBar() {

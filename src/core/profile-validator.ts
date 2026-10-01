@@ -1,6 +1,6 @@
 /** Validação estrita e prévia segura de perfis recebidos do Google Drive. */
 
-import { IProfile, ISyncItem } from "../models/interfaces";
+import { IExtensionProfileEntry, IProfile, ISyncItem } from "../models/interfaces";
 import { getWorkspaceLayouts, normalizeLayoutProfile } from "../models/layout-profile";
 
 export const MAX_REMOTE_PROFILE_FILE_BYTES = 3 * 1024 * 1024;
@@ -20,8 +20,8 @@ export interface IProfilePreviewItem {
 export interface IProfileRestorePreview {
     items: IProfilePreviewItem[];
     extensions?: {
-        toInstall: string[];
-        toDelete: string[];
+        toInstall: IExtensionProfileEntry[];
+        toDelete: IExtensionProfileEntry[];
     };
     layout?: {
         globalEntryCount: number;
@@ -63,9 +63,11 @@ export function validateRemoteProfile(
                 break;
             }
             case "extensions": {
-                const extensionIds = validateExtensionIds(value);
-                data.extensions = extensionIds;
-                preview.items.push({ key: item.key, label: item.label, detail: `${extensionIds.length} extensão(ões)` });
+                const extensionNames = validateExtensionDisplayNames(profile.data.extensionDisplayNames);
+                const validatedExtensions = validateExtensions(value, extensionNames);
+                data.extensions = validatedExtensions.ids;
+                data.extensionDisplayNames = validatedExtensions.displayNames;
+                preview.items.push({ key: item.key, label: item.label, detail: `${validatedExtensions.ids.length} extensão(ões)` });
                 break;
             }
             case "snippets": {
@@ -121,21 +123,83 @@ function validateBase64(value: unknown, label: string, maxBytes: number): string
     return value;
 }
 
-/** Valida IDs antes de qualquer cálculo de diferença ou acionamento de comando da IDE. */
-function validateExtensionIds(value: unknown): string[] {
+/** Valida extensões antes de qualquer cálculo de diferença ou acionamento de comando da IDE. */
+function validateExtensions(
+    value: unknown,
+    savedDisplayNames: Record<string, string>
+): { ids: string[]; displayNames: Record<string, string> } {
     if (!Array.isArray(value) || value.length > MAX_EXTENSION_IDS) {
         throw new Error("Lista remota de extensões inválida");
     }
-    const ids = value.map((id) => {
+    const entries = value.map((value) => {
+        const id = typeof value === "string" ? value : value?.id;
         if (typeof id !== "string" || !/^[a-z0-9][a-z0-9-]*\.[a-z0-9][a-z0-9-]*$/i.test(id)) {
             throw new Error("ID remoto de extensão inválido");
         }
-        return id;
+        const suppliedDisplayName = typeof value === "string" ? savedDisplayNames[id] : value?.displayName;
+        const displayName = validateExtensionDisplayName(suppliedDisplayName);
+        return {
+            id,
+            displayName: displayName || displayNameFromExtensionId(id),
+        };
     });
-    if (new Set(ids).size !== ids.length) {
+    if (new Set(entries.map((entry) => entry.id)).size !== entries.length) {
         throw new Error("Lista remota de extensões contém duplicidades");
     }
-    return ids;
+    return {
+        ids: entries.map((entry) => entry.id),
+        displayNames: Object.fromEntries(entries.map((entry) => [entry.id, entry.displayName])),
+    };
+}
+
+/** Lê os nomes públicos sem tornar o perfil incompatível com versões antigas. */
+function validateExtensionDisplayNames(value: unknown): Record<string, string> {
+    if (value === undefined) {
+        return {};
+    }
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        throw new Error("Metadados remotos de extensões inválidos");
+    }
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length > MAX_EXTENSION_IDS) {
+        throw new Error("Metadados remotos de extensões excedem o limite permitido");
+    }
+    const displayNames: Record<string, string> = {};
+    for (const [id, displayName] of entries) {
+        if (!isValidExtensionId(id)) {
+            throw new Error("ID remoto de extensão inválido");
+        }
+        const normalized = validateExtensionDisplayName(displayName);
+        if (!normalized) {
+            throw new Error("Nome remoto de extensão inválido");
+        }
+        displayNames[id] = normalized;
+    }
+    return displayNames;
+}
+
+function validateExtensionDisplayName(value: unknown): string | undefined {
+    if (value === undefined) {
+        return undefined;
+    }
+    if (typeof value !== "string" || value.trim().length === 0 || value.length > 160 || /[\u0000-\u001F\u007F]/.test(value)) {
+        throw new Error("Nome remoto de extensão inválido");
+    }
+    return value.trim();
+}
+
+function isValidExtensionId(id: string): boolean {
+    return /^[a-z0-9][a-z0-9-]*\.[a-z0-9][a-z0-9-]*$/i.test(id);
+}
+
+/** Mantém perfis antigos legíveis, que armazenavam somente o identificador técnico. */
+function displayNameFromExtensionId(id: string): string {
+    const extensionName = id.split(".")[1] || id;
+    return extensionName
+        .split(/[-_]+/)
+        .filter(Boolean)
+        .map((part) => part.length <= 4 ? part.toUpperCase() : `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+        .join(" ");
 }
 
 /** Valida nomes e conteúdo de snippets como um pacote fechado, sem aplicação parcial. */

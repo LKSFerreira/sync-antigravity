@@ -135,6 +135,22 @@ export default class GoogleDriveService {
             onProgress?.(stepLabel, stepIdx++, steps.length, "done");
         }
 
+        if (enabledItems.some((item) => item.key === "extensions")) {
+            const metadataFiles = files.filter((candidate) => candidate.name === "extensions-meta.json");
+            if (metadataFiles.length > 1) {
+                throw new Error("O perfil contém cópias duplicadas de extensions-meta.json");
+            }
+            const metadataFile = metadataFiles[0];
+            if (metadataFile) {
+                const content = await this.downloadFileContent(metadataFile.id, MAX_REMOTE_PROFILE_FILE_BYTES);
+                try {
+                    profile.data.extensionDisplayNames = JSON.parse(content);
+                } catch (error) {
+                    this.logger.warn(`Metadados de extensões inválidos em ${profileName}; os nomes legíveis serão reconstruídos`);
+                }
+            }
+        }
+
         return profile;
     }
 
@@ -171,6 +187,8 @@ export default class GoogleDriveService {
                 onProgress?.(label, stepIdx++, steps.length, "done");
             }
 
+            await this.saveExtensionDisplayNames(folder!.id, undefined, profile, enabledItems);
+
             // meta.json
             const syncKeys = enabledItems.map(i => i.key);
             const metaLabel = "Salvando metadados";
@@ -199,6 +217,8 @@ export default class GoogleDriveService {
                 }
                 onProgress?.(label, stepIdx++, steps.length, "done");
             }
+
+            await this.saveExtensionDisplayNames(folder!.id, fileMap, profile, enabledItems);
 
             // Atualiza meta.json
             const metaLabel = "Atualizando metadados";
@@ -471,6 +491,29 @@ export default class GoogleDriveService {
             `multipart/related; boundary=${boundary}`
         );
         return JSON.parse(data) as DriveFile;
+    }
+
+    /** Salva nomes públicos separadamente para manter extensions.json compatível com versões antigas. */
+    private async saveExtensionDisplayNames(
+        folderId: string,
+        fileMap: Map<string, string> | undefined,
+        profile: IProfile,
+        enabledItems: ISyncItem[]
+    ): Promise<void> {
+        if (!enabledItems.some((item) => item.key === "extensions")) {
+            return;
+        }
+        const displayNames = profile.data.extensionDisplayNames;
+        if (!displayNames || typeof displayNames !== "object" || Array.isArray(displayNames) || Object.keys(displayNames).length === 0) {
+            return;
+        }
+        const content = JSON.stringify(displayNames, null, 2);
+        const existingId = fileMap?.get("extensions-meta.json");
+        if (existingId) {
+            await this.updateFile(existingId, content);
+        } else {
+            await this.createFileInFolder(folderId, "extensions-meta.json", content);
+        }
     }
 
     /** Lista arquivos dentro de uma pasta */

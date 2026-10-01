@@ -1,5 +1,31 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Identidade independente do **Sync Antigravity**, com publisher `lksferreira` e documentação própria.
+- Sincronização de layout global e por workspace, com prévia e rollback local.
+- Login Google com PKCE, armazenamento seguro de tokens e escopo mínimo `drive.appdata`.
+- Testes automatizados, cobertura mínima de 80%, CI, CodeQL, varredura de segredos e empacotamento verificável do VSIX.
+
+### Fixed
+- A confirmação no navegador agora só informa sucesso depois que os tokens OAuth foram recebidos e salvos pela extensão.
+- A troca de tokens possui limite de 30 segundos e erros de login são registrados no canal `Sync Antigravity`.
+- A barra de status é atualizada imediatamente ao iniciar ou encerrar a sessão.
+- O redirecionamento OAuth usa o endereço de loopback `127.0.0.1`, compatível com o fluxo recomendado para aplicativos de computador.
+- O cliente OAuth desktop envia o `client_secret` técnico exigido pelo Google na troca e atualização de tokens.
+- A página da extensão prioriza instalação e uso; as instruções de desenvolvimento foram movidas para `docs/DESENVOLVIMENTO.md`.
+- Corrigido o carregamento do SQLite no VSIX: o adaptador de layout usa o carregador JavaScript distribuído ao lado do WebAssembly, evitando falha ao criar perfis.
+- A ação de restauração passou a se chamar **Aplicar** e detecta automaticamente os arquivos da instalação atual do Antigravity, sem permitir a seleção manual de diretórios.
+- Corrigida a aplicação de layout no Windows quando o Antigravity mantém `state.vscdb` bloqueado: a troca é programada com segurança para a próxima saída completa da IDE.
+
+### Security
+- Credenciais locais, prévias e arquivos de desenvolvimento são excluídos explicitamente do VSIX.
+- O arquivo `.env` e o JSON de credenciais permanecem fora do Git e do VSIX; o identificador técnico exigido pelo OAuth desktop é compilado no bundle e não é um token de usuário.
+
+### Migration
+- Esta distribuição usa projeto Google Cloud e publisher próprios. Após instalar, faça login novamente e valide seus perfis antes de restaurá-los. Consulte [docs/MIGRACAO.md](docs/MIGRACAO.md).
+
 ## [0.7.4] - 2026-06-16
 
 ### Fixed

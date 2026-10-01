@@ -31,7 +31,10 @@ async function criarBancoTemporario(): Promise<{ directory: string; databasePath
 test("lê e prepara uma atualização SQLite em memória sem alterar o banco original", async () => {
     const wasmDeOrigem = path.join(process.cwd(), "node_modules", "sql.js", "dist", "sql-wasm.wasm");
     const wasmDeTeste = path.join(__dirname, "..", "src", "core", "sql-wasm.wasm");
+    const javascriptDeOrigem = path.join(process.cwd(), "node_modules", "sql.js", "dist", "sql-wasm.js");
+    const javascriptDeTeste = path.join(__dirname, "..", "src", "core", "sql-wasm.js");
     await copyFile(wasmDeOrigem, wasmDeTeste);
+    await copyFile(javascriptDeOrigem, javascriptDeTeste);
 
     const { directory, databasePath } = await criarBancoTemporario();
     try {
@@ -55,5 +58,6 @@ test("lê e prepara uma atualização SQLite em memória sem alterar o banco ori
     } finally {
         await rm(directory, { recursive: true, force: true });
         await rm(wasmDeTeste, { force: true });
+        await rm(javascriptDeTeste, { force: true });
     }
 });

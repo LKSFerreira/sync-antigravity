@@ -348,7 +348,24 @@ body {
 
 /* === Prévia de layout === */
 .layout-preview-modal {
-    max-width: 620px;
+    width: min(94vw, 720px);
+    max-width: 720px;
+    max-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
+}
+
+.layout-preview-modal .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 16px;
+}
+
+.layout-preview-modal .modal-footer {
+    flex: 0 0 auto;
+    border-top: 1px solid var(--ag-border);
+    background: var(--vscode-sideBar-background, var(--vscode-editor-background));
 }
 
 .layout-preview-section {
@@ -356,8 +373,6 @@ body {
 }
 
 .layout-preview-keys {
-    max-height: 180px;
-    overflow: auto;
     margin: 8px 0 0;
     padding-left: 20px;
     font-size: 11px;
@@ -982,16 +997,20 @@ body {
 
 /* === Sync Progress Modal === */
 .sync-progress-modal {
-    max-width: 420px;
-    width: 90%;
+    width: min(90%, 520px);
+    max-width: 520px;
+    max-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
 }
 
 .sync-steps {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
     gap: 8px;
     padding: 8px 0 16px;
-    max-height: 220px;
+    max-height: min(420px, calc(100vh - 160px));
     overflow-y: auto;
 }
 

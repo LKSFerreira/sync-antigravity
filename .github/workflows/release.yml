@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   publicar-release:
@@ -33,6 +34,9 @@ jobs:
         run: npm test
 
       - name: Gerar bundle de produção
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: npm run package
 
       - name: Gerar VSIX
@@ -42,10 +46,15 @@ jobs:
         run: |
           unzip -Z1 artifacts/sync-antigravity.vsix | tee artifacts/vsix-files.txt
           grep -Fx 'extension/dist/sql-wasm.wasm' artifacts/vsix-files.txt
+          grep -Fx 'extension/dist/sql-wasm.js' artifacts/vsix-files.txt
+          grep -Fx 'extension/dist/layout-replacement-helper.js' artifacts/vsix-files.txt
           ! grep -E '(^|/)(\.env|client_secret_|preview-login-success\.html|icon_original\.png)' artifacts/vsix-files.txt
 
       - name: Gerar hash SHA-256
         run: sha256sum artifacts/sync-antigravity.vsix > artifacts/SHA256SUMS
+
+      - name: Publicar o mesmo VSIX no Open VSX
+        run: npx --no-install ovsx publish artifacts/sync-antigravity.vsix --trusted-publishing
 
       - name: Publicar release da tag
         env:

@@ -18,8 +18,6 @@
     const btnLogin = document.getElementById("btn-login");
     const btnLogout = document.getElementById("btn-logout");
     const btnCreateProfile = document.getElementById("btn-create-profile");
-    const btnSetSettingsPath = document.getElementById("btn-set-settings-path");
-    const btnSetKeybindingsPath = document.getElementById("btn-set-keybindings-path");
     const btnShowLogs = document.getElementById("btn-show-logs");
     const btnRefresh = document.getElementById("btn-refresh");
 
@@ -285,14 +283,14 @@
                     ${workspaceOptions}
                 </div>
             ` : '';
-            const formatExtensionIds = (ids) => ids.length === 0
+            const formatExtensions = (extensions) => extensions.length === 0
                 ? '<span class="layout-preview-muted">Nenhuma</span>'
-                : `<ul class="profile-preview-extension-list">${ids.slice(0, 20).map((id) => `<li><code>${escapeHtml(id)}</code></li>`).join('')}${ids.length > 20 ? `<li>e mais ${ids.length - 20}</li>` : ''}</ul>`;
+                : `<ul class="profile-preview-extension-list">${extensions.slice(0, 20).map((extension) => `<li>${escapeHtml(extension.displayName || "Extensão sem nome")}</li>`).join('')}${extensions.length > 20 ? `<li>e mais ${extensions.length - 20}</li>` : ''}</ul>`;
             const extensionSection = extensionPreview ? `
                 <div class="layout-preview-section">
                     <div class="sync-item-label">Alterações de extensões</div>
-                    <div class="profile-preview-extension-group"><span>Instalar (${Array.isArray(extensionPreview.toInstall) ? extensionPreview.toInstall.length : 0})</span>${formatExtensionIds(Array.isArray(extensionPreview.toInstall) ? extensionPreview.toInstall : [])}</div>
-                    <div class="profile-preview-extension-group"><span>Remover (${Array.isArray(extensionPreview.toDelete) ? extensionPreview.toDelete.length : 0})</span>${formatExtensionIds(Array.isArray(extensionPreview.toDelete) ? extensionPreview.toDelete : [])}</div>
+                    <div class="profile-preview-extension-group"><span>Instalar (${Array.isArray(extensionPreview.toInstall) ? extensionPreview.toInstall.length : 0})</span>${formatExtensions(Array.isArray(extensionPreview.toInstall) ? extensionPreview.toInstall : [])}</div>
+                    <div class="profile-preview-extension-group"><span>Remover (${Array.isArray(extensionPreview.toDelete) ? extensionPreview.toDelete.length : 0})</span>${formatExtensions(Array.isArray(extensionPreview.toDelete) ? extensionPreview.toDelete : [])}</div>
                     <p class="layout-preview-muted">As extensões só serão alteradas após uma confirmação adicional.</p>
                 </div>
             ` : '';
@@ -315,7 +313,7 @@
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" data-modal="cancel">Cancelar</button>
-                        <button class="btn btn-accent" data-modal="confirm">Restaurar perfil</button>
+                        <button class="btn btn-accent" data-modal="confirm">Aplicar perfil</button>
                     </div>
                 </div>
             `;
@@ -421,14 +419,6 @@
         }
     });
 
-    btnSetSettingsPath.addEventListener("click", () => {
-        vscode.postMessage({ command: "setPaths", type: "settings" });
-    });
-
-    btnSetKeybindingsPath.addEventListener("click", () => {
-        vscode.postMessage({ command: "setPaths", type: "keybindings" });
-    });
-
     btnShowLogs.addEventListener("click", () => {
         vscode.postMessage({ command: "showLogs" });
     });
@@ -456,11 +446,11 @@
                     ? syncItemsConfig.filter(i => metaKeys.includes(i.key))
                     : syncItemsConfig;
                 const syncKeys = await showSyncSelect({
-                    title: "Baixar perfil",
-                    message: `Baixar as configurações de "${profileName}" para este dispositivo?`,
+                    title: "Aplicar perfil",
+                    message: `Aplicar "${profileName}" nesta instalação do Antigravity?`,
                     icon: "cloud-download",
                     syncItems: items,
-                    confirmLabel: "Baixar",
+                    confirmLabel: "Aplicar",
                 });
                 if (syncKeys) {
                     vscode.postMessage({ command: "pullProfile", fileName, syncKeys });
@@ -476,11 +466,11 @@
                     enabled: metaKeys ? metaKeys.includes(i.key) : i.enabled,
                 }));
                 const syncKeys = await showSyncSelect({
-                    title: "Enviar perfil",
-                    message: `Enviar as configurações atuais para "${profileName}"?`,
+                    title: "Atualizar perfil",
+                    message: `Atualizar "${profileName}" com as configurações atuais?`,
                     icon: "cloud-upload",
                     syncItems: items,
-                    confirmLabel: "Enviar",
+                    confirmLabel: "Atualizar",
                 });
                 if (syncKeys) {
                     vscode.postMessage({ command: "updateProfile", fileName, syncKeys });
@@ -1004,14 +994,17 @@
                 markSyncDone();
                 break;
             case "askExtensionSync": {
-                const installList = (msg.toInstall || []);
-                const deleteList = (msg.toDelete || []);
+                const installEntries = (msg.toInstall || []);
+                const deleteEntries = (msg.toDelete || []);
+                const extensionLabel = (extension) => extension.displayName || "Extensão sem nome";
+                const installList = installEntries.map((extension) => extension.id);
+                const deleteList = deleteEntries.map((extension) => extension.id);
                 let details = `A sincronização instalará ${installList.length} e removerá ${deleteList.length} extensões.\n\n`;
                 if (installList.length > 0) {
-                    details += `📥 Instalar:\n${installList.map(id => `  • ${id}`).join("\n")}\n\n`;
+                    details += `📥 Instalar:\n${installEntries.map((extension) => `  • ${extensionLabel(extension)}`).join("\n")}\n\n`;
                 }
                 if (deleteList.length > 0) {
-                    details += `🗑️ Remover:\n${deleteList.map(id => `  • ${id}`).join("\n")}`;
+                    details += `🗑️ Remover:\n${deleteEntries.map((extension) => `  • ${extensionLabel(extension)}`).join("\n")}`;
                 }
                 showConfirm({
                     title: "Sincronização de extensões",
@@ -1026,20 +1019,25 @@
                             command: "applyExtensionSync",
                             toInstall: installList,
                             toDelete: deleteList,
+                            layoutWillApplyAfterExit: Boolean(msg.layoutWillApplyAfterExit),
                         });
                     } else {
-                        // Pula a sincronização de extensões: ainda solicita recarregamento para configurações/atalhos
-                        vscode.postMessage({ command: "reloadWindow" });
+                        vscode.postMessage({
+                            command: "requestRestart",
+                            layoutWillApplyAfterExit: Boolean(msg.layoutWillApplyAfterExit),
+                        });
                     }
                 });
                 break;
             }
-            case "askReload":
+            case "askRestart":
                 showConfirm({
-                    title: "Recarregamento necessário",
-                    message: "Perfil aplicado! Recarregar a janela para ver todas as alterações?",
+                    title: "Reinicialização necessária",
+                    message: msg.layoutWillApplyAfterExit
+                        ? "Perfil aplicado. Reinicie o Antigravity agora para concluir a aplicação do layout, das configurações e das extensões. Salve seu trabalho antes de continuar."
+                        : "Perfil aplicado. Reinicie o Antigravity agora para carregar todas as alterações.",
                     icon: "refresh",
-                    confirmLabel: "Recarregar agora",
+                    confirmLabel: "Reiniciar agora",
                     cancelLabel: "Mais tarde",
                     variant: "accent",
                 }).then((confirmed) => {
@@ -1170,15 +1168,15 @@
                     <div class="profile-actions">
                         <button class="btn btn-primary btn-sm"
                                 data-action="pull" data-file="${escapeAttr(p.fileName)}"
-                                title="Baixar o perfil para este dispositivo">
+                                title="Aplicar este perfil nesta instalação do Antigravity">
                             <span class="codicon codicon-cloud-download"></span>
-                            Baixar
+                            Aplicar
                         </button>
                         <button class="btn btn-secondary btn-sm"
                                 data-action="push" data-file="${escapeAttr(p.fileName)}"
-                                title="Enviar a configuração atual para este perfil">
+                                title="Atualizar este perfil com a configuração atual">
                             <span class="codicon codicon-cloud-upload"></span>
-                            Enviar
+                            Atualizar
                         </button>
                         <button class="btn btn-danger btn-sm"
                                 data-action="delete" data-file="${escapeAttr(p.fileName)}"

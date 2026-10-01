@@ -83,11 +83,11 @@ O projeto será aberto, transparente e controlado por este fork. Ele não será 
 
 ## Fase 5: Preparação para o Open VSX
 
-- [ ] Definir nome público final da extensão.
+- [x] Definir nome público final da extensão.
 - [ ] Criar conta e namespace de publisher no Open VSX.
-- [ ] Criar token de publicação e armazená-lo apenas como secret do repositório.
-- [ ] Atualizar `package.json` com `name`, `displayName`, `publisher`, URLs e palavras-chave próprios.
-- [ ] Preparar CHANGELOG, política de privacidade e instruções de migração.
+- [ ] Configurar publicação confiável via OpenID Connect (OIDC) no Open VSX.
+- [x] Atualizar `package.json` com `name`, `displayName`, `publisher`, URLs e palavras-chave próprios.
+- [x] Preparar CHANGELOG, política de privacidade e instruções de migração.
 - [ ] Criar release candidata e instalar o VSIX em uma máquina limpa.
 - [ ] Validar login Google, push, pull, extensões, snippets, rollback e layout.
 
@@ -111,5 +111,5 @@ O projeto será aberto, transparente e controlado por este fork. Ele não será 
 | --- | --- | --- |
 | Projeto OAuth próprio no Google Cloud | autenticação independente | Fase 3 |
 | Conta e namespace no Open VSX | publicação | Fase 5 |
-| Token do Open VSX | deploy automatizado | Fase 5 |
+| Publisher confiável do Open VSX (OIDC) | deploy automatizado sem token persistente | Fase 5 |
 | Máquina ou perfil limpo do Antigravity | validação de restauração e release | Fases 1 e 5 |

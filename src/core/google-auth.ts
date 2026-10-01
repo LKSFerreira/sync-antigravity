@@ -10,6 +10,7 @@ import { LOGIN_SUCCESS_EFFECT_MARKUP, LOGIN_SUCCESS_EFFECT_STYLES } from "./logi
 
 // Configuração OAuth: injetada de .env durante a compilação pelo webpack DefinePlugin
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const SCOPES = [
     "https://www.googleapis.com/auth/drive.appdata",
 ];
@@ -22,6 +23,13 @@ export interface TokenData {
     access_token: string;
     refresh_token: string;
     expires_at: number; // Unix timestamp (ms)
+}
+
+interface CallbackSession {
+    port: number;
+    codePromise: Promise<string>;
+    completeSuccess: () => void;
+    completeError: (error: Error) => void;
 }
 
 export default class GoogleAuth {
@@ -82,8 +90,8 @@ export default class GoogleAuth {
             .digest("base64url");
 
         // Inicia um servidor local para capturar o retorno
-        const { port, codePromise } = await this.startCallbackServer(state);
-        const redirectUri = `http://localhost:${port}/callback`;
+        const { port, codePromise, completeSuccess, completeError } = await this.startCallbackServer(state);
+        const redirectUri = `http://127.0.0.1:${port}/callback`;
 
         // Monta a URL OAuth
         const params = new URLSearchParams({
@@ -104,21 +112,28 @@ export default class GoogleAuth {
         // Abre o navegador
         const opened = await env.openExternal(Uri.parse(authUrl));
         if (!opened) {
-            throw new Error(
+            const error = new Error(
                 "Falha ao abrir o navegador para iniciar sessão com o Google. Tente novamente."
             );
+            completeError(error);
+            throw error;
         }
 
-        // Aguarda o retorno (limite de 30 s)
-        const code = await codePromise;
-        this.logger.info("Authorization code received, exchanging for tokens...");
+        try {
+            const code = await codePromise;
+            this.logger.info("Código de autorização recebido. Trocando por tokens...");
 
-        // Troca o código por tokens
-        const tokenData = await this.exchangeCodeForTokens(code, redirectUri, codeVerifier);
-        this.tokens = tokenData;
-        await this.saveTokens();
+            const tokenData = await this.exchangeCodeForTokens(code, redirectUri, codeVerifier);
+            this.tokens = tokenData;
+            await this.saveTokens();
+            completeSuccess();
 
-        this.logger.info("Google login successful!", true);
+            this.logger.info("Sessão do Google iniciada com sucesso", true);
+        } catch (error) {
+            const loginError = error instanceof Error ? error : new Error(String(error));
+            completeError(loginError);
+            throw loginError;
+        }
     }
 
     /** Encerra a sessão: remove os tokens */
@@ -140,34 +155,59 @@ export default class GoogleAuth {
         return CLIENT_ID;
     }
 
+    /** Obtém o identificador técnico exigido pelo cliente OAuth desktop do Google. */
+    private getClientSecret(): string {
+        if (!CLIENT_SECRET || CLIENT_SECRET === "undefined" || CLIENT_SECRET.startsWith("your_client_secret")) {
+            throw new Error(
+                "GOOGLE_CLIENT_SECRET não foi configurado. Copie o valor client_secret do JSON do cliente OAuth desktop para o arquivo .env antes de empacotar a extensão."
+            );
+        }
+        return CLIENT_SECRET;
+    }
+
     /** Inicia o servidor HTTP local para receber o retorno OAuth */
     private startCallbackServer(
         expectedState: string
-    ): Promise<{ port: number; codePromise: Promise<string> }> {
+    ): Promise<CallbackSession> {
         return new Promise((resolve, reject) => {
             const server = http.createServer();
             let resolveCode!: (code: string) => void;
             let rejectCode!: (error: Error) => void;
             let completed = false;
+            let authorizationReceived = false;
+            let callbackResponse: http.ServerResponse | undefined;
             const codePromise = new Promise<string>((resolveCodePromise, rejectCodePromise) => {
                 resolveCode = resolveCodePromise;
                 rejectCode = rejectCodePromise;
             });
-            const complete = (error?: Error, code?: string) => {
+            const complete = (html?: string) => {
                 if (completed) {
                     return;
                 }
                 completed = true;
                 clearTimeout(timeout);
-                server.close();
-                if (error) {
-                    rejectCode(error);
-                } else if (code) {
-                    resolveCode(code);
+                if (callbackResponse && !callbackResponse.writableEnded) {
+                    callbackResponse.end(html);
                 }
+                server.close();
+            };
+            const completeSuccess = () => complete(this.getSuccessHtml());
+            const completeError = (error: Error) => complete(this.getCompletionErrorHtml(error.message));
+            const rejectAuthorization = (error: Error, res: http.ServerResponse) => {
+                if (completed) {
+                    return;
+                }
+                callbackResponse = res;
+                res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
+                complete(this.getErrorHtml(error.message));
+                rejectCode(error);
             };
             const timeout = setTimeout(() => {
-                complete(new Error("O tempo para iniciar sessão expirou. Tente novamente."));
+                if (!authorizationReceived) {
+                    const error = new Error("O tempo para iniciar sessão expirou. Tente novamente.");
+                    completeError(error);
+                    rejectCode(error);
+                }
             }, 120_000);
 
             server.on("request", (req, res) => {
@@ -176,7 +216,7 @@ export default class GoogleAuth {
                     res.end("Fluxo de autenticação já concluído");
                     return;
                 }
-                const url = new URL(req.url || "/", "http://localhost");
+                const url = new URL(req.url || "/", "http://127.0.0.1");
 
                 if (url.pathname !== "/callback") {
                     res.writeHead(404);
@@ -189,42 +229,42 @@ export default class GoogleAuth {
                 const error = url.searchParams.get("error");
 
                 if (error) {
-                    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-                    res.end(this.getErrorHtml(error));
-                    complete(new Error(`Login do Google negado: ${error}`));
+                    rejectAuthorization(new Error(`Login do Google negado: ${error}`), res);
                     return;
                 }
 
                 if (!this.isExpectedState(state, expectedState)) {
-                    res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-                    res.end(this.getErrorHtml("Parâmetro state inválido"));
-                    complete(new Error("Incompatibilidade no state OAuth: possível ataque CSRF"));
+                    rejectAuthorization(new Error("Incompatibilidade no state OAuth: possível ataque CSRF"), res);
                     return;
                 }
 
                 if (!code) {
-                    res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-                    res.end(this.getErrorHtml("Nenhum código de autorização"));
-                    complete(new Error("Nenhum código de autorização recebido"));
+                    rejectAuthorization(new Error("Nenhum código de autorização recebido"), res);
                     return;
                 }
 
+                authorizationReceived = true;
+                clearTimeout(timeout);
+                callbackResponse = res;
                 res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-                res.end(this.getSuccessHtml());
-                complete(undefined, code);
+                res.write(this.getPendingLoginHtml());
+                resolveCode(code);
             });
 
             server.listen(0, "127.0.0.1", () => {
                 const addr = server.address();
                 if (addr && typeof addr !== "string") {
-                    resolve({ port: addr.port, codePromise });
+                    resolve({ port: addr.port, codePromise, completeSuccess, completeError });
                 } else {
                     reject(new Error("Falha ao iniciar o servidor de retorno"));
                 }
             });
 
             server.on("error", (err) => {
-                complete(err);
+                completeError(err);
+                if (!authorizationReceived) {
+                    rejectCode(err);
+                }
                 reject(err);
             });
         });
@@ -250,6 +290,7 @@ export default class GoogleAuth {
         const params = new URLSearchParams({
             code,
             client_id: this.getClientId(),
+            client_secret: this.getClientSecret(),
             redirect_uri: redirectUri,
             grant_type: "authorization_code",
             code_verifier: codeVerifier,
@@ -272,6 +313,7 @@ export default class GoogleAuth {
 
         const params = new URLSearchParams({
             client_id: this.getClientId(),
+            client_secret: this.getClientSecret(),
             refresh_token: this.tokens.refresh_token,
             grant_type: "refresh_token",
         });
@@ -339,6 +381,19 @@ export default class GoogleAuth {
     /** Requisição HTTPS POST (form-urlencoded) */
     private httpsPost(url: string, body: string): Promise<string> {
         return new Promise((resolve, reject) => {
+            let settled = false;
+            const resolveOnce = (value: string) => {
+                if (!settled) {
+                    settled = true;
+                    resolve(value);
+                }
+            };
+            const rejectOnce = (error: Error) => {
+                if (!settled) {
+                    settled = true;
+                    reject(error);
+                }
+            };
             const parsed = new URL(url);
             const options = {
                 hostname: parsed.hostname,
@@ -359,15 +414,19 @@ export default class GoogleAuth {
                         req.destroy(new Error("Resposta do OAuth excede o limite permitido"));
                     }
                 });
+                res.on("error", rejectOnce);
                 res.on("end", () => {
-                    if (!res.statusCode) {
-                        reject(new Error(`OAuth respondeu com HTTP ${res.statusCode || "desconhecido"}`));
+                    if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
+                        rejectOnce(new Error(this.getOAuthErrorMessage(data, res.statusCode)));
                         return;
                     }
-                    resolve(data);
+                    resolveOnce(data);
                 });
             });
-            req.on("error", reject);
+            req.setTimeout(30_000, () => {
+                req.destroy(new Error("A troca de tokens do Google excedeu o limite de 30 segundos."));
+            });
+            req.on("error", rejectOnce);
             req.write(body);
             req.end();
         });
@@ -411,6 +470,26 @@ export default class GoogleAuth {
         };
     }
 
+    /** Extrai uma causa segura e limitada da resposta de erro do OAuth. */
+    private getOAuthErrorMessage(data: string, statusCode?: number): string {
+        try {
+            const parsed: unknown = JSON.parse(data);
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+                const response = parsed as Record<string, unknown>;
+                const code = typeof response.error === "string" ? response.error : undefined;
+                const description = typeof response.error_description === "string"
+                    ? response.error_description.slice(0, 240)
+                    : undefined;
+                if (code) {
+                    return `Falha no OAuth: ${code}${description ? ` - ${description}` : ""}`;
+                }
+            }
+        } catch {
+            // Respostas não JSON não revelam uma causa segura para a pessoa usuária.
+        }
+        return `OAuth respondeu com HTTP ${statusCode || "desconhecido"}`;
+    }
+
     /** Verifica o formato antes de usar dados vindos do SecretStorage. */
     private isValidTokenData(value: Partial<TokenData>): value is TokenData {
         return typeof value.access_token === "string" && value.access_token.length > 0
@@ -418,14 +497,14 @@ export default class GoogleAuth {
             && typeof value.expires_at === "number" && Number.isFinite(value.expires_at);
     }
 
-    /** Página HTML de sucesso */
-    private getSuccessHtml(): string {
+    /** Página exibida enquanto o código OAuth é trocado pelos tokens. */
+    private getPendingLoginHtml(): string {
         return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sessão iniciada - Sync Antigravity</title>
+<title>Concluindo sessão - Sync Antigravity</title>
 <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
@@ -440,55 +519,55 @@ export default class GoogleAuth {
         background: radial-gradient(circle at top, #30314a 0%, #1e1e2e 58%);
         color: #cdd6f4;
     }
-    .success-message {
-        position: relative;
-        z-index: 1;
-        text-align: center;
-    }
-    h1 {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 11px;
-        margin: 0 0 12px;
-        color: #a6e3a1;
-        font-size: clamp(25px, 5vw, 34px);
-    }
-    .success-check {
-        display: inline-grid;
-        width: 1em;
-        height: 1em;
-        place-items: center;
-        flex: 0 0 auto;
-        border-radius: .2em;
-        background: #51cf8a;
-        color: #1e1e2e;
-        font-family: system-ui, sans-serif;
-        font-size: .58em;
-        font-weight: 900;
-        line-height: 1;
-    }
+    .success-message { position: relative; z-index: 1; text-align: center; }
+    h1 { display: flex; align-items: center; justify-content: center; gap: 11px; margin: 0 0 12px; color: #a6e3a1; font-size: clamp(25px, 5vw, 34px); }
+    .success-check { display: inline-grid; width: 1em; height: 1em; place-items: center; flex: 0 0 auto; border-radius: .2em; background: #51cf8a; color: #1e1e2e; font-family: system-ui, sans-serif; font-size: .58em; font-weight: 900; line-height: 1; }
     p { margin: 0; font-size: 17px; line-height: 1.55; }
     ${LOGIN_SUCCESS_EFFECT_STYLES}
 </style>
 </head>
 <body>
-    ${LOGIN_SUCCESS_EFFECT_MARKUP}
+    <main id="login-status" class="success-message">
+        <h1>Concluindo início de sessão...</h1>
+        <p>Validando a sessão no Antigravity.</p>
+    </main>`;
+    }
+
+    /** Finaliza a página de retorno somente depois de salvar os tokens. */
+    private getSuccessHtml(): string {
+        const markup = `${LOGIN_SUCCESS_EFFECT_MARKUP}
     <main class="success-message">
         <h1><span class="success-check" aria-hidden="true">✓</span>Sessão iniciada com sucesso!</h1>
         <p>Você pode fechar esta aba e retornar ao Antigravity.</p>
-    </main>
-    <script>setTimeout(() => window.close(), 3000)</script>
-</body>
-</html>`;
+    </main>`;
+        return `<script>document.body.innerHTML = ${JSON.stringify(markup)}; setTimeout(() => window.close(), 3000);</script></body></html>`;
+    }
+
+    private getCompletionErrorHtml(error: string): string {
+        const markup = `<main class="success-message">
+        <h1 style="color:#f38ba8">Falha ao iniciar sessão</h1>
+        <p>${this.escapeHtml(error)}</p>
+        <p style="margin-top:12px">Feche esta aba e tente novamente no Antigravity.</p>
+    </main>`;
+        return `<script>document.body.innerHTML = ${JSON.stringify(markup)};</script></body></html>`;
     }
 
     /** Página HTML de erro */
     private getErrorHtml(error: string): string {
         return `<!DOCTYPE html><html><body style="font-family:system-ui;text-align:center;padding:60px;background:#1e1e2e;color:#cdd6f4">
 <h1 style="color:#f38ba8">❌ Falha ao iniciar sessão</h1>
-<p>${error}</p>
+<p>${this.escapeHtml(error)}</p>
 <p>Feche esta aba e tente novamente no Antigravity.</p>
 </body></html>`;
+    }
+
+    private escapeHtml(value: string): string {
+        return value.replace(/[&<>'"]/g, (character) => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            "'": "&#39;",
+            "\"": "&quot;",
+        })[character] || character);
     }
 }

@@ -32,7 +32,7 @@ O `appDataFolder` é um espaço separado do Drive visível e acessível apenas a
 4. O código de autorização e o verificador PKCE são enviados por HTTPS ao endpoint de tokens do Google. A resposta é validada antes de ser persistida.
 5. Os tokens resultantes são armazenados no `SecretStorage`; a sincronização usa o token de acesso apenas nas chamadas HTTPS à API do Google Drive.
 
-Um aplicativo desktop é um cliente OAuth público: um `client_secret` embutido no VSIX poderia ser extraído e não oferece proteção. Por isso o projeto envia somente o Client ID público e usa PKCE para proteger a troca do código.
+Um aplicativo desktop é um cliente OAuth público: o valor chamado `client_secret` no cliente desktop pode ser extraído do VSIX e não oferece proteção contra cópia. Este projeto OAuth exige esse identificador técnico na troca de tokens; por isso ele é compilado junto do Client ID. Ele **não é** token de usuário, senha de Conta Google nem autorização para acessar dados sem o consentimento OAuth. O PKCE protege a troca do código, e os tokens de cada pessoa ficam no `SecretStorage`.
 
 ## Configuração do projeto OAuth do fork
 
@@ -42,10 +42,10 @@ Antes de publicar, a pessoa mantenedora deve concluir estes passos na conta Goog
 2. Configurar a tela de consentimento OAuth, incluindo e-mail de suporte e os dados exigidos pelo Google.
 3. Habilitar a Google Drive API para esse projeto.
 4. Criar um Client ID OAuth do tipo **Aplicativo para computador**.
-5. Copiar apenas o Client ID para `GOOGLE_CLIENT_ID` no `.env` local antes de gerar o VSIX. O `.env` é ignorado pelo Git.
+5. Copiar `client_id` para `GOOGLE_CLIENT_ID` e `client_secret` para `GOOGLE_CLIENT_SECRET` no `.env` local antes de gerar o VSIX. O `.env` é ignorado pelo Git.
 6. Testar o login em uma instalação limpa e, antes da publicação, confirmar que o consentimento mostra somente o escopo `drive.appdata`.
 
-O Client ID é um identificador público do aplicativo e pode estar no pacote. Não crie, armazene ou envie um `GOOGLE_CLIENT_SECRET` para este projeto.
+O Client ID e o identificador técnico `client_secret` desse cliente desktop acabam distribuídos no pacote, pois são exigidos pelo fluxo configurado no Google. Nunca os confunda com tokens OAuth: os tokens continuam secretos. O arquivo JSON baixado do Google Cloud e o `.env` permanecem fora do Git e do VSIX.
 
 ## Referências oficiais
 

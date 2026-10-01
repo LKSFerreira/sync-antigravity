@@ -1,8 +1,10 @@
 /** Adaptador SQLite para extrair e preparar alterações de layout permitidas. */
 
+import { existsSync } from "fs";
 import { readFile } from "fs/promises";
+import { createRequire } from "node:module";
 import * as path from "path";
-import initSqlJs from "sql.js";
+import type initSqlJs from "sql.js";
 import {
     ILayoutEntry,
     GLOBAL_LAYOUT_KEYS,
@@ -13,10 +15,17 @@ import {
 } from "../models/layout-profile";
 
 type EntryValidator = (entry: ILayoutEntry) => boolean;
+type SqlJsInitializer = typeof initSqlJs;
 
-let sqlPromise: ReturnType<typeof initSqlJs> | undefined;
+const nodeRequire = createRequire(__filename);
+let sqlPromise: ReturnType<SqlJsInitializer> | undefined;
 
 async function getSql() {
+    const sqlModulePath = path.join(__dirname, "sql-wasm.js");
+    const initSqlJs = nodeRequire(
+        existsSync(sqlModulePath) ? sqlModulePath : "sql.js/dist/sql-wasm.js"
+    ) as SqlJsInitializer;
+
     sqlPromise ??= initSqlJs({
         locateFile: (fileName) => path.join(__dirname, fileName),
     });

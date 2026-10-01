@@ -25,6 +25,7 @@ test("aceita perfil remoto válido e prepara uma prévia sem escrever arquivos",
     }), ITEMS);
 
     assert.deepEqual(profile.data.extensions, ["publisher.extensao"]);
+    assert.deepEqual(profile.data.extensionDisplayNames, { "publisher.extensao": "Extensao" });
     assert.equal(Object.keys(profile.data.snippets as Record<string, string>).length, 1);
     assert.equal(preview.items.length, 5);
 });
@@ -64,6 +65,30 @@ test("rejeita IDs de extensão inválidos ou repetidos antes de qualquer instala
     assert.throws(
         () => validateRemoteProfile(criarPerfil({ extensions: ["../maliciosa"] }), ITEMS),
         /ID remoto de extensão inválido/,
+    );
+});
+
+test("preserva o nome público da extensão e aceita o formato legado", () => {
+    const { profile } = validateRemoteProfile(criarPerfil({
+        extensions: [
+            { id: "charliermarsh.ruff", displayName: "Ruff" },
+            "publisher.extensao-legada",
+        ],
+        extensionDisplayNames: {
+            "publisher.extensao-legada": "Extensão legada",
+        },
+    }), ITEMS);
+
+    assert.deepEqual(profile.data.extensions, ["charliermarsh.ruff", "publisher.extensao-legada"]);
+    assert.deepEqual(profile.data.extensionDisplayNames, {
+        "charliermarsh.ruff": "Ruff",
+        "publisher.extensao-legada": "Extensão legada",
+    });
+    assert.throws(
+        () => validateRemoteProfile(criarPerfil({
+            extensions: [{ id: "publisher.extensao", displayName: "" }],
+        }), ITEMS),
+        /Nome remoto de extensão inválido/,
     );
 });
 

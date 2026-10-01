@@ -1,7 +1,8 @@
 // SyncController: lê/escreve arquivos de configuração do Antigravity IDE
 // Compatível somente com Antigravity IDE 2.0+
 
-import { readFile, readdir, mkdir, rename, unlink, writeFile } from "fs/promises";
+import { spawn } from "child_process";
+import { readFile, readdir, mkdir, rename, rm, unlink, writeFile } from "fs/promises";
 import * as os from "os";
 import * as path from "path";
 import {
@@ -10,10 +11,9 @@ import {
     Uri,
     commands,
     extensions,
-    window,
     workspace,
 } from "vscode";
-import { IProfile, ISyncItem } from "../models/interfaces";
+import { IExtensionProfileEntry, IProfile, ISyncItem } from "../models/interfaces";
 import {
     createGlobalLayoutDocument,
     createLayoutProfile,
@@ -86,6 +86,19 @@ interface IProfileBackupManifest {
     files: Array<{ name: string; existed: boolean }>;
 }
 
+interface IPendingLayoutReplacement {
+    schemaVersion: 1;
+    userDataPath: string;
+    replacements: Array<{
+        sourceName: string;
+        targetPath: string;
+    }>;
+}
+
+export interface IProfileApplicationResult {
+    layoutWillApplyAfterExit: boolean;
+}
+
 export default class SyncController {
     context: ExtensionContext;
     logger: Logger;
@@ -100,106 +113,34 @@ export default class SyncController {
         logger: Logger,
         context: ExtensionContext
     ): Promise<SyncController | undefined> {
-        // Verifica e localiza os caminhos de configuração de settings.json e keybindings.json
+        // Localiza ou cria os arquivos oficiais da instalação atual do Antigravity.
         for (const fileType of ["settings", "keybindings"] as const) {
-            const cachedPath: string | undefined = context.globalState.get(`${fileType}Path`);
-
-            // Verifica o caminho em cache: remove se apontar para a pasta errada ou se o arquivo não existir
-            if (cachedPath) {
-                const isStale = await SyncController.isPathStale(cachedPath, logger);
-                if (isStale) {
-                    logger.info(`Caminho em cache está desatualizado, detectando novamente: ${cachedPath}`);
-                    await context.globalState.update(`${fileType}Path`, undefined);
-                }
-            }
-
-            if (!context.globalState.get(`${fileType}Path`)) {
-                const found = await SyncController.findConfigFile(fileType, logger);
-                if (found) {
-                    context.globalState.update(`${fileType}Path`, found);
-                    logger.info(`${fileType}.json encontrado: ${found}`);
-                } else {
-                    logger.error(
-                        `Não foi possível encontrar ${fileType}.json: abrindo o seletor de arquivos`,
-                        "SyncController.initialize",
-                        true
-                    );
-                    try {
-                        const manualPath = await SyncController.setManualPath(fileType);
-                        context.globalState.update(`${fileType}Path`, manualPath);
-                    } catch {
-                        logger.error(
-                            `${fileType}.json é obrigatório. Reative a extensão.`,
-                            "SyncController.initialize",
-                            true
-                        );
-                        return undefined;
-                    }
-                }
-            }
-        }
-
-        // Valida: settingsPath e keybindingsPath não podem apontar para o mesmo arquivo
-        const settingsPath = context.globalState.get<string>("settingsPath");
-        const keybindingsPath = context.globalState.get<string>("keybindingsPath");
-        if (settingsPath && keybindingsPath && settingsPath === keybindingsPath) {
-            logger.warn(`Os caminhos de configurações e atalhos são idênticos: ${settingsPath} - detectando os atalhos novamente`);
-            await context.globalState.update("keybindingsPath", undefined);
-            const found = await SyncController.findConfigFile("keybindings", logger);
-            if (found) {
-                await context.globalState.update("keybindingsPath", found);
-                logger.info(`keybindings.json detectado novamente: ${found}`);
-            } else {
+            const found = await SyncController.findConfigFile(fileType, logger);
+            if (!found) {
                 logger.error(
-                    "Não foi possível encontrar keybindings.json: abrindo o seletor de arquivos",
+                    `Não foi possível preparar ${fileType}.json no diretório do Antigravity`,
                     "SyncController.initialize",
                     true
                 );
-                try {
-                    const manualPath = await SyncController.setManualPath("keybindings");
-                    await context.globalState.update("keybindingsPath", manualPath);
-                } catch {
-                    logger.error(
-                        "keybindings.json é obrigatório. Reative a extensão.",
-                        "SyncController.initialize",
-                        true
-                    );
-                    return undefined;
-                }
+                return undefined;
             }
+            await context.globalState.update(`${fileType}Path`, found);
+            logger.info(`${fileType}.json localizado automaticamente: ${found}`);
+        }
+
+        // Protege contra uma detecção inesperada em que os dois arquivos coincidam.
+        const settingsPath = context.globalState.get<string>("settingsPath");
+        const keybindingsPath = context.globalState.get<string>("keybindingsPath");
+        if (settingsPath && keybindingsPath && settingsPath === keybindingsPath) {
+            logger.error(
+                "Os arquivos de configurações e atalhos foram resolvidos para o mesmo destino",
+                "SyncController.initialize",
+                true
+            );
+            return undefined;
         }
 
         return new SyncController(logger, context);
-    }
-
-    /** Verifica se o caminho em cache continua válido (arquivo existe e está na pasta correta do Antigravity IDE) */
-    private static async isPathStale(cachedPath: string, logger: Logger): Promise<boolean> {
-        // Detecta um caminho da pasta legada "Antigravity" (não "Antigravity IDE")
-        const normalizedPath = cachedPath.replace(/\\/g, "/");
-        if (/\/Antigravity\/User\//i.test(normalizedPath) && !/\/Antigravity IDE\/User\//i.test(normalizedPath)) {
-            logger.info(`O caminho pertence ao Antigravity legado (não ao Antigravity IDE): ${cachedPath}`);
-            return true;
-        }
-
-        // Detecta caminhos de outra plataforma (por exemplo, um caminho do Windows em cache no Linux)
-        const currentPlatform = os.platform();
-        if (currentPlatform !== "win32" && /^[A-Z]:\\/i.test(cachedPath)) {
-            logger.info(`Caminho do Windows detectado em ${currentPlatform}: ${cachedPath}`);
-            return true;
-        }
-        if (currentPlatform === "win32" && cachedPath.startsWith("/")) {
-            logger.info(`Caminho Unix detectado no Windows: ${cachedPath}`);
-            return true;
-        }
-
-        // Verifica se o arquivo existe
-        try {
-            await workspace.fs.stat(Uri.file(cachedPath));
-            return false;
-        } catch {
-            logger.info(`O arquivo em cache não existe mais: ${cachedPath}`);
-            return true;
-        }
     }
 
     /** Tenta vários caminhos para localizar o arquivo de configuração: cria no caminho padrão se estiver ausente */
@@ -234,7 +175,7 @@ export default class SyncController {
         return null;
     }
 
-    /** Trả về danh sách các đường dẫn cấu hình khả dĩ cho tệp hoặc thư mục tương đối */
+    /** Retorna os caminhos possíveis de configuração para um arquivo ou diretório relativo. */
     private static getConfigPaths(relativePath: string): string[] {
         const appName = "Antigravity IDE";
         switch (os.platform()) {
@@ -257,21 +198,6 @@ export default class SyncController {
         }
     }
 
-    /** Abre a caixa de diálogo para seleção manual do arquivo de configuração */
-    public static async setManualPath(
-        t: "keybindings" | "settings",
-        title?: string
-    ): Promise<string> {
-        const manualPath = (await window.showOpenDialog({
-            canSelectFiles: true,
-            canSelectFolders: false,
-            canSelectMany: false,
-            filters: { "Arquivos JSON": ["json"] },
-            title: title || `Selecionar o arquivo ${t}.json`,
-        }))!;
-        return manualPath[0].fsPath;
-    }
-
     /** Lê a configuração atual com base nos itens de sincronização habilitados */
     public async getActiveProfile(syncItems: ISyncItem[], existingLayout?: unknown): Promise<IProfile> {
         const data: Record<string, any> = {};
@@ -285,7 +211,11 @@ export default class SyncController {
                     data.keybindings = await this.readConfigRaw("keybindings");
                     break;
                 case "extensions":
-                    data.extensions = this.getExtensions();
+                    const localExtensions = this.getExtensions();
+                    data.extensions = localExtensions.map((entry) => entry.id);
+                    data.extensionDisplayNames = Object.fromEntries(
+                        localExtensions.map((entry) => [entry.id, entry.displayName])
+                    );
                     break;
                 case "snippets":
                     data.snippets = await this.readSnippets();
@@ -306,7 +236,7 @@ export default class SyncController {
         profile: IProfile,
         syncItems: ISyncItem[],
         workspaceLayoutId?: string
-    ) {
+    ): Promise<IProfileApplicationResult> {
         const validated = this.validateIncomingProfile(profile, syncItems).profile;
         const fileChanges = await this.prepareProfileFileChanges(validated, syncItems);
         const backupPath = fileChanges.length > 0
@@ -319,19 +249,20 @@ export default class SyncController {
                 await this.replaceFileAtomically(change.filePath, change.updated);
                 applied.push(change);
             }
-            if (Object.prototype.hasOwnProperty.call(validated.data, "layout")) {
-                await this.restoreLayoutProfile(validated.data.layout, workspaceLayoutId);
+            const layoutWillApplyAfterExit = Object.prototype.hasOwnProperty.call(validated.data, "layout")
+                ? await this.restoreLayoutProfile(validated.data.layout, workspaceLayoutId)
+                : false;
+
+            if (backupPath) {
+                this.logger.info(`Perfil aplicado. Backup local criado em: ${backupPath}`);
             }
+            return { layoutWillApplyAfterExit };
         } catch (error) {
             await this.rollbackProfileFileChanges(applied);
             if (backupPath) {
                 this.logger.warn(`Restauração revertida. Backup local preservado em: ${backupPath}`);
             }
             throw error;
-        }
-
-        if (backupPath) {
-            this.logger.info(`Perfil restaurado. Backup local criado em: ${backupPath}`);
         }
     }
 
@@ -345,18 +276,12 @@ export default class SyncController {
 
     /** Lê o arquivo de configuração como base64: preserva comentários/espaços em branco */
     private async readConfigRaw(t: "keybindings" | "settings"): Promise<string | undefined> {
-        let filePath: string;
         try {
-            filePath = this.context.globalState.get(`${t}Path`)!;
-        } catch {
-            this.logger.error(`O caminho de ${t} não foi definido`, "SyncController.readConfigRaw", true);
-            return undefined;
-        }
-        try {
+            const filePath = await this.resolveConfigFilePath(t);
             const buffer = await readFile(filePath);
             return buffer.toString("base64");
-        } catch (error) {
-            this.logger.error(`Falha ao ler o arquivo de ${t}: ${filePath}`, "SyncController.readConfigRaw", true, error);
+        } catch {
+            this.logger.error(`Falha ao ler o arquivo de ${t} da instalação atual`, "SyncController.readConfigRaw", true);
             return undefined;
         }
     }
@@ -366,10 +291,7 @@ export default class SyncController {
         const changes: IProfileFileChange[] = [];
         const enabledKeys = new Set(syncItems.filter((item) => item.enabled).map((item) => item.key));
         if (enabledKeys.has("settings") && Object.prototype.hasOwnProperty.call(profile.data, "settings")) {
-            const settingsPath = this.context.globalState.get<string>("settingsPath");
-            if (!settingsPath) {
-                throw new Error("Caminho de configurações não definido");
-            }
+            const settingsPath = await this.resolveConfigFilePath("settings");
             changes.push(await this.createProfileFileChange(
                 "settings.json",
                 settingsPath,
@@ -377,10 +299,7 @@ export default class SyncController {
             ));
         }
         if (enabledKeys.has("keybindings") && Object.prototype.hasOwnProperty.call(profile.data, "keybindings")) {
-            const keybindingsPath = this.context.globalState.get<string>("keybindingsPath");
-            if (!keybindingsPath) {
-                throw new Error("Caminho de atalhos não definido");
-            }
+            const keybindingsPath = await this.resolveConfigFilePath("keybindings");
             changes.push(await this.createProfileFileChange(
                 "keybindings.json",
                 keybindingsPath,
@@ -481,22 +400,25 @@ export default class SyncController {
     }
 
     /** Obtém a lista de extensões instaladas (exceto as nativas) */
-    private getExtensions(): string[] {
+    private getExtensions(): IExtensionProfileEntry[] {
         const excludeList =
             workspace
                 .getConfiguration("antigravitysync")
                 .get<string[]>("excludeExtensions") || [];
         return extensions.all
             .filter((ext: Extension<any>) => !ext.packageJSON.isBuiltin)
-            .map((ext: Extension<any>) => ext.id)
-            .filter((id) => !excludeList.includes(id));
+            .filter((ext: Extension<any>) => !excludeList.includes(ext.id))
+            .map((ext: Extension<any>) => ({
+                id: ext.id,
+                displayName: String(ext.packageJSON.displayName || ext.packageJSON.name || ext.id),
+            }));
     }
 
     // ===== Layout helpers =====
 
     /** Lê o layout global e preserva os workspaces já associados ao perfil. */
     private async readLayoutProfile(existingLayout?: unknown): Promise<ILayoutProfile> {
-        const userDataPath = this.getUserDataPath();
+        const userDataPath = await this.getUserDataPath();
         const globalEntries = await readGlobalLayoutEntries(
             path.join(userDataPath, "globalStorage", "state.vscdb")
         );
@@ -516,10 +438,10 @@ export default class SyncController {
         return createLayoutProfile(global, [...otherWorkspaces, currentWorkspace]);
     }
 
-    /** Restaura o layout em bancos separados, com cópias de segurança e rollback local. */
-    private async restoreLayoutProfile(layout: unknown, workspaceLayoutId?: string): Promise<void> {
+    /** Prepara o layout em bancos separados e o agenda para o momento em que a IDE liberar os arquivos. */
+    private async restoreLayoutProfile(layout: unknown, workspaceLayoutId?: string): Promise<boolean> {
         const profile = this.parseLayoutProfile(layout);
-        const userDataPath = this.getUserDataPath();
+        const userDataPath = await this.getUserDataPath();
         const changes: ILayoutChange[] = [];
         const globalDatabasePath = path.join(userDataPath, "globalStorage", "state.vscdb");
 
@@ -557,28 +479,12 @@ export default class SyncController {
         }
 
         const backupPath = await this.createLayoutBackup(changes);
-        const applied: typeof changes = [];
-        try {
-            for (const change of changes) {
-                await this.replaceDatabaseAtomically(change.databasePath, change.updated);
-                applied.push(change);
-            }
-            this.logger.info(`Layout restaurado. Backup criado em: ${backupPath}`, true);
-        } catch (error) {
-            for (const change of applied.reverse()) {
-                try {
-                    await this.replaceDatabaseAtomically(change.databasePath, change.original);
-                } catch (rollbackError) {
-                    this.logger.error(
-                        `Falha ao reverter o layout: ${change.name}`,
-                        "SyncController.restoreLayoutProfile",
-                        false,
-                        rollbackError
-                    );
-                }
-            }
-            throw error;
-        }
+        const pendingPath = await this.scheduleLayoutReplacement(changes, userDataPath);
+        this.logger.info(
+            `Layout programado para a próxima saída completa do Antigravity. Backup: ${backupPath}; pendência: ${pendingPath}`,
+            true
+        );
+        return true;
     }
 
     /** Produz a prévia segura dos grupos e chaves que poderão ser restaurados. */
@@ -629,7 +535,7 @@ export default class SyncController {
         }
 
         const manifest = await this.readLayoutBackupManifest(backup.id);
-        const userDataPath = this.getUserDataPath();
+        const userDataPath = await this.getUserDataPath();
         const backupPath = this.getLayoutBackupPath(backup.id);
         const changes: ILayoutChange[] = [];
 
@@ -648,21 +554,10 @@ export default class SyncController {
         }
 
         const rollbackBackupPath = await this.createLayoutBackup(changes);
-        const applied: ILayoutChange[] = [];
-        try {
-            for (const change of changes) {
-                await this.replaceDatabaseAtomically(change.databasePath, change.updated);
-                applied.push(change);
-            }
-        } catch (error) {
-            for (const change of applied.reverse()) {
-                await this.replaceDatabaseAtomically(change.databasePath, change.original).catch(() => undefined);
-            }
-            throw error;
-        }
+        const pendingPath = await this.scheduleLayoutReplacement(changes, userDataPath);
 
         this.logger.info(
-            `Backup de layout restaurado: ${backup.id}. Snapshot de segurança: ${rollbackBackupPath}`,
+            `Backup de layout programado: ${backup.id}. Snapshot de segurança: ${rollbackBackupPath}; pendência: ${pendingPath}`,
             true
         );
         return backup;
@@ -708,12 +603,19 @@ export default class SyncController {
         return undefined;
     }
 
-    /** Obtém a pasta User do Antigravity sem confiar em caminhos fixos de plataforma. */
-    private getUserDataPath(): string {
-        const settingsPath = this.context.globalState.get<string>("settingsPath");
-        if (!settingsPath || path.basename(settingsPath) !== "settings.json") {
-            throw new Error("Não foi possível determinar a pasta de dados do Antigravity");
+    /** Resolve o arquivo oficial da instalação atual, sem aceitar diretórios escolhidos manualmente. */
+    private async resolveConfigFilePath(t: "keybindings" | "settings"): Promise<string> {
+        const filePath = await SyncController.findConfigFile(t, this.logger);
+        if (!filePath) {
+            throw new Error(`Não foi possível localizar ${t}.json no diretório do Antigravity`);
         }
+        await this.context.globalState.update(`${t}Path`, filePath);
+        return filePath;
+    }
+
+    /** Obtém a pasta User do Antigravity a partir do arquivo de configurações detectado. */
+    private async getUserDataPath(): Promise<string> {
+        const settingsPath = await this.resolveConfigFilePath("settings");
         return path.dirname(settingsPath);
     }
 
@@ -801,9 +703,53 @@ export default class SyncController {
         return /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/.test(backupId);
     }
 
-    /** Substitui um banco somente após gravar uma cópia temporária completa. */
-    private async replaceDatabaseAtomically(databasePath: string, content: Uint8Array): Promise<void> {
-        await this.replaceFileAtomically(databasePath, Buffer.from(content));
+    /** Salva bancos preparados e inicia um processo que aguarda a IDE liberar seus arquivos. */
+    private async scheduleLayoutReplacement(
+        changes: ILayoutChange[],
+        userDataPath: string
+    ): Promise<string> {
+        const id = new Date().toISOString().replace(/[:.]/g, "-");
+        const pendingPath = path.join(this.context.globalStorageUri.fsPath, "layout-pending", id);
+        await mkdir(pendingPath, { recursive: true });
+
+        const replacements: IPendingLayoutReplacement["replacements"] = [];
+        try {
+            for (const change of changes) {
+                const sourceName = change.name;
+                const sourcePath = path.join(pendingPath, sourceName);
+                await writeFile(sourcePath, change.updated, { flag: "wx" });
+                replacements.push({ sourceName, targetPath: change.databasePath });
+            }
+
+            const manifest: IPendingLayoutReplacement = {
+                schemaVersion: 1,
+                userDataPath,
+                replacements,
+            };
+            const manifestPath = path.join(pendingPath, "manifest.json");
+            await writeFile(manifestPath, JSON.stringify(manifest), { flag: "wx" });
+            this.startLayoutReplacementHelper(manifestPath);
+            return pendingPath;
+        } catch (error) {
+            await rm(pendingPath, { recursive: true, force: true }).catch(() => undefined);
+            throw error;
+        }
+    }
+
+    /** Inicia o processo independente que conclui a troca após o encerramento da IDE. */
+    private startLayoutReplacementHelper(manifestPath: string): void {
+        const helperPath = path.join(
+            this.context.extensionUri.fsPath,
+            "dist",
+            "layout-replacement-helper.js"
+        );
+        const helper = spawn(process.execPath, [helperPath, manifestPath], {
+            detached: true,
+            stdio: "ignore",
+            windowsHide: true,
+            env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+        });
+        helper.unref();
     }
 
     /** Substitui um arquivo somente após gravar uma cópia temporária completa. */
@@ -884,15 +830,23 @@ export default class SyncController {
     }
 
     /** Compara extensões locais e remotas: retorna as diferenças para confirmação do provedor */
-    public getExtensionDiff(remoteList: string[]): { toInstall: string[]; toDelete: string[] } {
+    public getExtensionDiff(
+        remoteList: string[],
+        remoteDisplayNames: Record<string, string> = {}
+    ): { toInstall: IExtensionProfileEntry[]; toDelete: IExtensionProfileEntry[] } {
         const localList = this.getExtensions();
-        const localSet = new Set(localList);
-        const safeRemoteList = remoteList.filter((id) => this.isValidExtensionId(id));
-        const remoteSet = new Set(safeRemoteList);
+        const localSet = new Set(localList.map((entry) => entry.id));
+        const safeRemoteList = remoteList
+            .filter((id) => this.isValidExtensionId(id))
+            .map((id) => ({
+                id,
+                displayName: remoteDisplayNames[id] || this.displayNameFromExtensionId(id),
+            }));
+        const remoteSet = new Set(safeRemoteList.map((entry) => entry.id));
 
         return {
-            toInstall: safeRemoteList.filter((id) => !localSet.has(id)),
-            toDelete: localList.filter((id) => !remoteSet.has(id)),
+            toInstall: safeRemoteList.filter((entry) => !localSet.has(entry.id)),
+            toDelete: localList.filter((entry) => !remoteSet.has(entry.id)),
         };
     }
 
@@ -927,6 +881,16 @@ export default class SyncController {
         }
 
         return needsReload;
+    }
+
+    /** Nome legível para perfis antigos que ainda não contêm metadados públicos. */
+    private displayNameFromExtensionId(id: string): string {
+        const extensionName = id.split(".")[1] || id;
+        return extensionName
+            .split(/[-_]+/)
+            .filter(Boolean)
+            .map((part) => part.length <= 4 ? part.toUpperCase() : `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+            .join(" ");
     }
 
     /** Valida o formato publisher.name antes de acionar comandos de extensão. */

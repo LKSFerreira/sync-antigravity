@@ -12,6 +12,9 @@ preview-login-success.html
 images/icon_original.png
 artifacts/**
 .github/**
+docs/**
+ROADMAP.md
+FEATURES.md
 tsconfig.json
 tsconfig.test.json
 webpack.config.js

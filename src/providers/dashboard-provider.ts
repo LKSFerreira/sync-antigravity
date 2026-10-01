@@ -20,7 +20,6 @@ interface WebviewMessage {
     command: string;
     name?: string;
     fileName?: string;
-    type?: "settings" | "keybindings";
     folderId?: string;
     folderName?: string;
     fileId?: string;
@@ -30,6 +29,7 @@ interface WebviewMessage {
     syncKeys?: string[];  // Chaves de sincronização selecionadas na interface
     restoreId?: string;
     workspaceLayoutId?: string;
+    layoutWillApplyAfterExit?: boolean;
 }
 
 interface PendingProfileRestore {
@@ -46,6 +46,7 @@ export default class DashboardProvider {
     private readonly controller: SyncController;
     private readonly logger: Logger;
     private readonly context: vscode.ExtensionContext;
+    private readonly onAuthenticationChanged: () => Promise<void>;
     private readonly pendingProfileRestores = new Map<string, PendingProfileRestore>();
     private profileRestoreSequence = 0;
 
@@ -54,7 +55,8 @@ export default class DashboardProvider {
         auth: GoogleAuth,
         drive: GoogleDriveService,
         controller: SyncController,
-        logger: Logger
+        logger: Logger,
+        onAuthenticationChanged: () => Promise<void> = async () => undefined
     ) {
         this.context = context;
         this.extensionUri = context.extensionUri;
@@ -62,6 +64,7 @@ export default class DashboardProvider {
         this.drive = drive;
         this.controller = controller;
         this.logger = logger;
+        this.onAuthenticationChanged = onAuthenticationChanged;
     }
 
     /** Abre ou foca o painel */
@@ -179,8 +182,15 @@ export default class DashboardProvider {
                     sendLoading("login", true);
                     try {
                         await this.auth.login();
+                        await this.onAuthenticationChanged();
                         sendToast("success", "Sessão iniciada com sucesso!");
                     } catch (loginErr: any) {
+                        this.logger.error(
+                            `Falha ao iniciar sessão: ${loginErr?.message || "erro desconhecido"}`,
+                            "DashboardProvider.handleMessage",
+                            false,
+                            loginErr
+                        );
                         sendToast("error", loginErr?.message || "Falha ao iniciar sessão");
                     }
                     await this.refreshState();
@@ -189,6 +199,7 @@ export default class DashboardProvider {
 
                 case "logout":
                     await this.auth.logout();
+                    await this.onAuthenticationChanged();
                     await this.refreshState();
                     sendToast("info", "Sessão encerrada");
                     break;
@@ -219,7 +230,7 @@ export default class DashboardProvider {
                         enabled: message.syncKeys ? message.syncKeys.includes(item.key) : item.enabled,
                     }));
                     sendLoading(`pull-${profileName}`, true);
-                    this.panel?.webview.postMessage({ type: "syncStart", title: `Baixando "${profileName}"` });
+                    this.panel?.webview.postMessage({ type: "syncStart", title: `Preparando "${profileName}"` });
                     const profile = await this.drive.getProfile(profileName, syncItems, sendProgress);
                     if (!profile) {
                         this.panel?.webview.postMessage({ type: "syncDone" });
@@ -229,7 +240,10 @@ export default class DashboardProvider {
                     }
                     const validated = this.controller.validateIncomingProfile(profile, syncItems);
                     if (Array.isArray(validated.profile.data.extensions)) {
-                        validated.preview.extensions = this.controller.getExtensionDiff(validated.profile.data.extensions);
+                        validated.preview.extensions = this.controller.getExtensionDiff(
+                            validated.profile.data.extensions,
+                            validated.profile.data.extensionDisplayNames
+                        );
                     }
                     const restoreId = String(++this.profileRestoreSequence);
                     this.pendingProfileRestores.set(restoreId, {
@@ -252,7 +266,7 @@ export default class DashboardProvider {
                     if (!message.restoreId) { return; }
                     const pending = this.pendingProfileRestores.get(message.restoreId);
                     if (!pending) {
-                        throw new Error("A prévia do perfil expirou. Baixe o perfil novamente.");
+                        throw new Error("A prévia do perfil expirou. Aplique o perfil novamente.");
                     }
                     this.pendingProfileRestores.delete(message.restoreId);
                     sendLoading(`pull-${pending.profileName}`, true);
@@ -282,8 +296,11 @@ export default class DashboardProvider {
                     const needsReload = await this.controller.applyExtensionSync(toInstall || [], toDelete || []);
                     sendLoading("extensionSync", false);
                     sendToast("success", "Extensões sincronizadas");
-                    if (needsReload) {
-                        this.panel?.webview.postMessage({ type: "askReload" });
+                    if (needsReload || message.layoutWillApplyAfterExit) {
+                        this.panel?.webview.postMessage({
+                            type: "askRestart",
+                            layoutWillApplyAfterExit: Boolean(message.layoutWillApplyAfterExit),
+                        });
                     }
                     break;
                 }
@@ -327,24 +344,15 @@ export default class DashboardProvider {
                     this.logger.show();
                     break;
 
-                case "setPaths": {
-                    const pathType = message.type || "settings";
-                    try {
-                        const filePath = await SyncController.setManualPath(pathType);
-                        this.context.globalState.update(`${pathType}Path`, filePath);
-                        sendToast("success", `Caminho de ${pathType} atualizado`);
-                    } catch (err: any) {
-                        // TypeError: a pessoa usuária cancelou a caixa de diálogo (undefined[0].fsPath)
-                        if (!(err instanceof TypeError)) {
-                            this.logger.error(`Falha ao definir o caminho de ${pathType}`, "setPaths", false, err);
-                            sendToast("error", `Falha ao definir o caminho de ${pathType}`);
-                        }
-                    }
-                    break;
-                }
-
                 case "reloadWindow":
                     await vscode.commands.executeCommand("workbench.action.reloadWindow");
+                    break;
+
+                case "requestRestart":
+                    this.panel?.webview.postMessage({
+                        type: "askRestart",
+                        layoutWillApplyAfterExit: Boolean(message.layoutWillApplyAfterExit),
+                    });
                     break;
 
                 case "refresh":
@@ -400,7 +408,7 @@ export default class DashboardProvider {
         }
     }
 
-    /** Aplica o perfil confirmado e continua o fluxo de extensões e recarregamento. */
+    /** Aplica o perfil confirmado e continua o fluxo de extensões e reinicialização. */
     private async completeProfilePull(
         profile: IProfile,
         profileName: string,
@@ -409,24 +417,30 @@ export default class DashboardProvider {
         sendToast: (level: "info" | "success" | "error", text: string) => void
     ): Promise<void> {
         const validatedProfile = this.controller.validateIncomingProfile(profile, syncItems).profile;
-        await this.controller.updateLocalProfile(validatedProfile, syncItems, workspaceLayoutId);
-
+        const result = await this.controller.updateLocalProfile(validatedProfile, syncItems, workspaceLayoutId);
         const extEnabled = syncItems.find((item) => item.key === "extensions")?.enabled;
         const extData = validatedProfile.data.extensions;
         if (extEnabled && extData && Array.isArray(extData)) {
-            const diff = this.controller.getExtensionDiff(extData);
+            const diff = this.controller.getExtensionDiff(
+                extData,
+                validatedProfile.data.extensionDisplayNames
+            );
             if (diff.toInstall.length > 0 || diff.toDelete.length > 0) {
                 this.panel?.webview.postMessage({
                     type: "askExtensionSync",
                     toInstall: diff.toInstall,
                     toDelete: diff.toDelete,
+                    layoutWillApplyAfterExit: result.layoutWillApplyAfterExit,
                 });
                 return;
             }
         }
 
-        sendToast("success", `Perfil "${profileName}" baixado`);
-        this.panel?.webview.postMessage({ type: "askReload" });
+        sendToast("success", `Perfil "${profileName}" aplicado`);
+        this.panel?.webview.postMessage({
+            type: "askRestart",
+            layoutWillApplyAfterExit: result.layoutWillApplyAfterExit,
+        });
     }
 
     /** Gera o conteúdo HTML da Webview */
@@ -522,14 +536,6 @@ export default class DashboardProvider {
                         <button class="btn btn-accent" id="btn-create-profile">
                             <span class="codicon codicon-add"></span>
                             Criar perfil
-                        </button>
-                        <button class="btn btn-secondary" id="btn-set-settings-path">
-                            <span class="codicon codicon-settings-gear"></span>
-                            Caminho das configurações
-                        </button>
-                        <button class="btn btn-secondary" id="btn-set-keybindings-path">
-                            <span class="codicon codicon-keyboard"></span>
-                            Caminho dos atalhos
                         </button>
                         <button class="btn btn-secondary" id="btn-show-logs">
                             <span class="codicon codicon-output"></span>

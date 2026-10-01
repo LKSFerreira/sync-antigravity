@@ -15,6 +15,7 @@ const config = {
         path: path.resolve(__dirname, "dist"),
         filename: "extension.js",
         libraryTarget: "commonjs2",
+        clean: true,
     },
     externals: {
         vscode: "commonjs vscode",
@@ -36,9 +37,11 @@ const config = {
         ],
     },
     plugins: [
-        // Injeta somente o Client ID público do OAuth. Aplicativos desktop não protegem client_secret.
+        // Clientes OAuth desktop não conseguem manter este identificador técnico secreto.
+        // O Google exige ambos os valores para este cliente durante a troca de tokens.
         new webpack.DefinePlugin({
             "process.env.GOOGLE_CLIENT_ID": JSON.stringify(process.env.GOOGLE_CLIENT_ID),
+            "process.env.GOOGLE_CLIENT_SECRET": JSON.stringify(process.env.GOOGLE_CLIENT_SECRET),
         }),
         // Copy webview assets (CSS, JS) và Codicons font vào dist/
         new CopyPlugin({
@@ -52,12 +55,24 @@ const config = {
                     to: "webview/[name][ext]",
                 },
                 {
-                    from: "node_modules/@vscode/codicons/dist",
-                    to: "webview/codicons",
+                    from: "node_modules/@vscode/codicons/dist/codicon.css",
+                    to: "webview/codicons/codicon.css",
+                },
+                {
+                    from: "node_modules/@vscode/codicons/dist/codicon.ttf",
+                    to: "webview/codicons/codicon.ttf",
                 },
                 {
                     from: "node_modules/sql.js/dist/sql-wasm.wasm",
                     to: "sql-wasm.wasm",
+                },
+                {
+                    from: "node_modules/sql.js/dist/sql-wasm.js",
+                    to: "sql-wasm.js",
+                },
+                {
+                    from: "src/core/layout-replacement-helper.js",
+                    to: "layout-replacement-helper.js",
                 },
             ],
         }),

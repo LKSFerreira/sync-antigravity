@@ -27,10 +27,16 @@ export interface IProfileMeta {
     syncKeys: string[]; // Chaves sincronizadas: ["settings", "extensions", "keybindings"]
 }
 
+/** Identificação legível de uma extensão sincronizada. */
+export interface IExtensionProfileEntry {
+    id: string;
+    displayName: string;
+}
+
 /** Dados completos do perfil: dinâmicos e indexados por ISyncItem.key */
 export interface IProfile {
     profileName: string;
-    data: Record<string, any>;  // { settings: {...}, extensions: [...], keybindings: [...] }
+    data: Record<string, any>;  // { settings: {...}, extensions: ["publicador.extensao"], extensionDisplayNames: {...} }
 }
 
 /** sync-meta.json raiz: armazena syncKeys de todos os perfis na raiz de appDataFolder */

@@ -42,6 +42,8 @@ jobs:
         run: |
           unzip -Z1 artifacts/sync-antigravity.vsix | tee artifacts/vsix-files.txt
           grep -Fx 'extension/dist/sql-wasm.wasm' artifacts/vsix-files.txt
+          grep -Fx 'extension/dist/sql-wasm.js' artifacts/vsix-files.txt
+          grep -Fx 'extension/dist/layout-replacement-helper.js' artifacts/vsix-files.txt
           ! grep -E '(^|/)(\.env|client_secret_|preview-login-success\.html|icon_original\.png)' artifacts/vsix-files.txt
 
       - name: Gerar hash SHA-256
