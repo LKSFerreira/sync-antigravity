@@ -2,6 +2,8 @@
 
 Última atualização: 30 de setembro de 2026.
 
+Versão pública: [sync.semsusto.app/privacidade](https://sync.semsusto.app/privacidade/).
+
 O Sync Antigravity sincroniza, por escolha da pessoa usuária, configurações e preferências do Antigravity IDE entre dispositivos. A extensão é distribuída por `lksferreira` e não possui servidor próprio.
 
 ## Dados tratados

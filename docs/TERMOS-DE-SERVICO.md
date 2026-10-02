@@ -2,6 +2,8 @@
 
 Última atualização: 30 de setembro de 2026.
 
+Versão pública: [sync.semsusto.app/termos](https://sync.semsusto.app/termos/).
+
 Ao usar o Sync Antigravity, você concorda com estes termos.
 
 ## Finalidade

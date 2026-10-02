@@ -5,6 +5,8 @@
 
 Sincronize configurações, extensões, atalhos, snippets e layout do **Antigravity IDE** entre dispositivos usando o **Google Drive**.
 
+Saiba como instalar e usar a extensão no [site do Sync Antigravity](https://sync.semsusto.app/).
+
 > **Fork independente:** mantido por [LKSFerreira](https://github.com/LKSFerreira), derivado de [thotam/antigravity-sync](https://github.com/thotam/antigravity-sync) e distribuído sob a licença MIT.
 
 > Esta extensão foi projetada exclusivamente para o [Antigravity IDE](https://www.antigravity.google/).
@@ -51,7 +53,7 @@ No outro computador, instale a extensão, entre na **mesma conta Google**, abra 
 - O layout é filtrado por uma lista de chaves visuais permitidas e recebe backup local antes da restauração.
 - Dados remotos são validados antes de afetarem configurações locais.
 
-Leia a [Política de privacidade](https://github.com/LKSFerreira/sync-antigravity/blob/main/docs/POLITICA-DE-PRIVACIDADE.md) e os [Termos de serviço](https://github.com/LKSFerreira/sync-antigravity/blob/main/docs/TERMOS-DE-SERVICO.md).
+Leia a [Política de privacidade](https://sync.semsusto.app/privacidade/) e os [Termos de serviço](https://sync.semsusto.app/termos/).
 
 ## Ajuda
 
@@ -64,7 +66,7 @@ Se algo não funcionar como esperado, abra uma [issue no GitHub](https://github.
 
 ## Projeto e desenvolvimento
 
-O código-fonte, a documentação técnica, as instruções para contribuir e o processo de publicação ficam no [repositório do projeto](https://github.com/LKSFerreira/sync-antigravity).
+O [site público](https://sync.semsusto.app/) reúne a instalação e o primeiro uso. O código-fonte, a documentação técnica, as instruções para contribuir e o processo de publicação ficam no [repositório do projeto](https://github.com/LKSFerreira/sync-antigravity).
 
 - [Documentação dos recursos](https://github.com/LKSFerreira/sync-antigravity/blob/main/FEATURES.md)
 - [Guia de desenvolvimento](https://github.com/LKSFerreira/sync-antigravity/blob/main/docs/DESENVOLVIMENTO.md)

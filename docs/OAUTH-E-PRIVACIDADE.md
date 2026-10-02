@@ -39,11 +39,13 @@ Um aplicativo desktop é um cliente OAuth público: o valor chamado `client_secr
 Antes de publicar, a pessoa mantenedora deve concluir estes passos na conta Google que controla o Sync Antigravity:
 
 1. Criar ou selecionar um projeto próprio no Google Cloud, por exemplo `Sync Antigravity`.
-2. Configurar a tela de consentimento OAuth, incluindo e-mail de suporte e os dados exigidos pelo Google.
+2. Em **Google Auth Platform > Branding**, configurar e-mail de suporte, logotipo e os links públicos: `https://sync.semsusto.app/`, `https://sync.semsusto.app/privacidade/` e `https://sync.semsusto.app/termos/`.
 3. Habilitar a Google Drive API para esse projeto.
 4. Criar um Client ID OAuth do tipo **Aplicativo para computador**.
 5. Copiar `client_id` para `GOOGLE_CLIENT_ID` e `client_secret` para `GOOGLE_CLIENT_SECRET` no `.env` local antes de gerar o VSIX. O `.env` é ignorado pelo Git.
-6. Testar o login em uma instalação limpa e, antes da publicação, confirmar que o consentimento mostra somente o escopo `drive.appdata`.
+6. Verificar `semsusto.app` no Google Search Console por registro DNS TXT e manter somente `semsusto.app` em **Domínios autorizados**. As rotas `/privacidade/` e `/termos/` não são domínios separados.
+7. Testar o login em uma instalação limpa e, antes da publicação, confirmar que o consentimento mostra somente o escopo `drive.appdata`.
+8. Publicar o Branding quando o Google Auth Platform disponibilizar essa ação. Para uso externo, conferir também o estado de **Público-alvo** e da **Central de verificação**.
 
 O Client ID e o identificador técnico `client_secret` desse cliente desktop acabam distribuídos no pacote, pois são exigidos pelo fluxo configurado no Google. Nunca os confunda com tokens OAuth: os tokens continuam secretos. O arquivo JSON baixado do Google Cloud e o `.env` permanecem fora do Git e do VSIX.
 

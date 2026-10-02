@@ -13,7 +13,7 @@ Esta é a versão independente do projeto, com publisher, identidade visual e pr
 1. Abra o painel `Sync Antigravity`.
 2. Inicie sessão na Conta Google desejada.
 3. Confira no consentimento Google se o único escopo é `drive.appdata`.
-4. Se existir um perfil, revise a prévia e restaure somente os itens desejados.
+4. Se existir um perfil, revise a prévia e aplique somente os itens desejados.
 5. Caso os perfis da extensão anterior não apareçam, crie um perfil novo nesta versão e envie suas configurações atuais. Não há migração automática entre projetos OAuth diferentes.
 
 ## Recuperação

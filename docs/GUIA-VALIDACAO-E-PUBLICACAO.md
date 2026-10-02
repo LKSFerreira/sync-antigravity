@@ -1,15 +1,16 @@
-# Guia detalhado: validar e preparar a publicação
+# Guia detalhado: validar, configurar e publicar
 
-Este guia prepara o Sync Antigravity para publicação sem enviar nada ao marketplace. Execute as etapas na ordem indicada.
+Este guia prepara o Sync Antigravity para uma publicação verificável. Execute as etapas na ordem indicada e não crie uma tag de release enquanto o namespace e o publisher confiável do Open VSX estiverem pendentes.
 
 ## Visão geral
 
 1. Gerar um VSIX local verificável.
 2. Testar em uma instalação limpa do Antigravity.
-3. Configurar o publisher no Open VSX.
-4. Vincular o workflow do GitHub como publisher confiável no Open VSX.
-5. Publicar a documentação de privacidade e termos no GitHub.
-6. Registrar o resultado para concluir a Fase 5.
+3. Registrar as credenciais de build no GitHub.
+4. Confirmar o site público e o Branding do OAuth.
+5. Aguardar a aprovação da propriedade do namespace no Open VSX.
+6. Vincular o workflow do GitHub como publisher confiável no Open VSX.
+7. Criar uma tag para o GitHub Actions publicar o VSIX, o hash e a release.
 
 ## 1. Antes de começar
 
@@ -86,89 +87,90 @@ Copie `artifacts\sync-antigravity.vsix` para a instalação limpa. No Antigravit
 5. Autorize e aguarde a página de sucesso.
 6. Retorne ao Antigravity e confirme que a sessão aparece como conectada.
 
-Enquanto o app OAuth estiver no modo **Testando**, o aviso de aplicativo não verificado é esperado para os usuários de teste autorizados no Google Cloud. Não compartilhe a extensão com pessoas fora dessa lista até colocar o consentimento OAuth em produção.
+Se o **Público-alvo** do Google Auth Platform estiver em **Testando**, só pessoas adicionadas como usuárias de teste poderão concluir o login. Em **Produção**, o login pode ser usado por pessoas externas, mas o Google ainda pode mostrar um aviso enquanto a revisão do Branding ou do aplicativo não tiver terminado. Confira o estado atual em **Google Auth Platform > Público-alvo** e **Central de verificação** antes de divulgar a extensão.
 
 ## 7. Validar a sincronização inteira
 
 Siga este roteiro e marque o resultado no [checklist de release candidata](VALIDACAO-RELEASE-CANDIDATA.md):
 
 1. Localize o perfil `release-candidata`.
-2. Execute a restauração e leia a prévia antes de confirmar.
+2. Execute **Aplicar** e leia a prévia antes de confirmar.
 3. Confirme configurações e atalhos.
 4. Confirme que o snippet de teste apareceu.
 5. Confirme a lista de extensões antes de qualquer instalação ou remoção.
-6. Confirme que o layout global mudou conforme o computador de origem.
-7. Abra um workspace e teste a restauração do layout dele.
-8. Execute `Sync Antigravity: Reverter último layout` e confirme que o backup local restaura o estado anterior.
+6. Se a validação de layout fizer parte desta release, confirme que o layout global mudou conforme o computador de origem.
+7. Se a validação de layout fizer parte desta release, abra um workspace e teste a aplicação do layout correspondente.
+8. Se o layout foi aplicado, execute `Sync Antigravity: Reverter último layout` e confirme que o backup local restaura o estado anterior.
 9. Feche e reabra o Antigravity para confirmar que a sessão e o ambiente continuam estáveis.
 
-Anote qualquer divergência: item, resultado esperado, resultado observado e captura de tela.
+Anote qualquer divergência: item, resultado esperado, resultado observado e captura de tela. Caso a validação de layout seja deliberadamente adiada, deixe os itens correspondentes desmarcados no [checklist](VALIDACAO-RELEASE-CANDIDATA.md) e registre a dívida técnica.
 
-## 8. Criar a conta de publisher no Open VSX
+## 8. Preparar a conta e o namespace no Open VSX
 
-O Open VSX exige um Publisher Agreement da Eclipse Foundation. Faça isso uma única vez:
+O Open VSX exige um Publisher Agreement da Eclipse Foundation. Faça isso uma única vez, caso ainda não tenha sido concluído:
 
 1. Crie uma conta em [accounts.eclipse.org](https://accounts.eclipse.org). No perfil, informe seu usuário GitHub exatamente como `LKSFerreira`.
 2. Acesse [open-vsx.org](https://open-vsx.org) e entre com a mesma conta GitHub.
 3. No avatar, abra **Settings** e escolha **Log in with Eclipse**.
 4. Abra **Show Publisher Agreement**, leia até o final e aceite se concordar.
-5. Em **Settings > Access Tokens**, crie um token temporário chamado `Criar namespace - Sync Antigravity`.
-6. Copie o token imediatamente. Ele não será mostrado de novo.
+5. Crie ou confirme o namespace `lksferreira` no Open VSX.
+6. Use **Claim Ownership** para abrir a solicitação pública de propriedade. Para este projeto, a evidência é a correspondência entre o namespace `lksferreira`, a conta GitHub `LKSFerreira` e o repositório `LKSFerreira/sync-antigravity`.
+7. Aguarde a aprovação da solicitação. Enquanto o namespace estiver marcado como não verificado, não é possível registrar o publisher confiável.
 
-## 9. Criar e proteger o namespace
+Não é necessário criar um token de acesso pessoal do Open VSX para o fluxo de release deste projeto. O token só seria necessário para um envio manual excepcional; não o crie nem o armazene no GitHub sem uma necessidade concreta.
 
-No PowerShell do projeto, defina o token somente para o processo atual e crie o namespace:
-
-```powershell
-$securePat = Read-Host "Cole o token do Open VSX" -AsSecureString
-$pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePat)
-$env:OVSX_PAT = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
-[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer)
-
-npm run openvsx:create-namespace
-
-Remove-Item Env:\OVSX_PAT
-```
-
-O resultado esperado é a criação do namespace `lksferreira`. Depois, solicite a propriedade do namespace seguindo as [instruções oficiais](https://github.com/eclipse-openvsx/openvsx/wiki/Namespace-Access); isso permite que as extensões apareçam como verificadas.
-
-## 10. Configurar publicação confiável por OIDC
-
-1. No Open VSX, abra **Settings > Trusted publishers** e selecione o namespace `lksferreira`.
-2. Adicione um publisher do tipo **GitHub Actions**.
-3. Informe o repositório `LKSFerreira/sync-antigravity` e o workflow `.github/workflows/release.yml`.
-4. Salve a configuração.
-
-O workflow usará OpenID Connect (OIDC) para solicitar um token de curta duração ao Open VSX no momento da tag. Não crie o secret `OVSX_PAT` no GitHub. Depois de criar o namespace, revogue o token temporário usado para essa operação.
-
-## 10.1 Credenciais do cliente OAuth para a release
+## 9. Credenciais do cliente OAuth para a release
 
 Antes da primeira tag de release, crie também estes dois secrets no GitHub Actions, com os valores do seu `.env` local:
 
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 
-Eles são usados somente durante o build da release para gerar um VSIX funcional. O `client_secret` de um cliente OAuth desktop não é tratado pelo Google como um segredo de usuário: ele é incluído no VSIX porque o endpoint de tokens desse cliente o exige. Nunca coloque tokens de acesso, tokens de atualização ou o arquivo JSON completo em secrets de build.
+Eles são usados somente durante o build da release para gerar um VSIX funcional. Em GitHub, abra **Settings > Secrets and variables > Actions > New repository secret** e crie um secret por vez. O `client_secret` de um cliente OAuth desktop não é tratado pelo Google como um segredo de usuário: ele é incluído no VSIX porque o endpoint de tokens desse cliente o exige. Nunca coloque tokens de acesso, tokens de atualização ou o arquivo JSON completo em secrets de build.
 
-## 11. Preparar o OAuth para produção
+## 10. Preparar e publicar o Branding do OAuth
 
-Depois que os documentos desta fase estiverem enviados ao GitHub, abra o Google Cloud:
+O Branding deve usar páginas públicas do projeto, hospedadas no mesmo domínio verificado. Abra o Google Cloud:
 
 1. Vá para **Google Auth Platform > Branding**.
-2. Informe a página inicial do repositório.
-3. Informe os links públicos da [política de privacidade](POLITICA-DE-PRIVACIDADE.md) e dos [termos](TERMOS-DE-SERVICO.md).
-4. Em **Público-alvo**, mantenha em teste até a validação terminar.
-5. Antes de disponibilizar a extensão ao público, siga o fluxo de publicação e verificação exigido pelo Google para o escopo solicitado.
+2. Informe `https://sync.semsusto.app/` como página inicial.
+3. Informe `https://sync.semsusto.app/privacidade/` como Política de Privacidade e `https://sync.semsusto.app/termos/` como Termos de Serviço.
+4. Em **Domínios autorizados**, mantenha somente o domínio raiz `semsusto.app`. Os caminhos `/privacidade/` e `/termos/` são páginas do site e não devem ser cadastrados como domínios.
+5. Verifique a propriedade de `semsusto.app` no Google Search Console por meio de um registro DNS TXT. Não remova esse registro depois da verificação.
+6. Salve e, quando o botão estiver disponível, selecione **Publicar branding**. A publicação do Branding não publica o código nem a extensão: ela apenas disponibiliza as informações do aplicativo na tela de consentimento.
+7. Em **Público-alvo**, confirme o estado desejado. Para uso público, o aplicativo deve estar em **Produção** e pode exigir análise do Google antes de deixar de mostrar avisos.
 
-## 12. O que me enviar ao final
+## 11. Configurar publicação confiável por OIDC
+
+Execute esta etapa somente depois que o Open VSX aprovar a propriedade do namespace:
+
+1. No Open VSX, abra **Settings > Trusted publishers** e selecione o namespace `lksferreira`.
+2. Adicione um publisher do tipo **GitHub Actions**.
+3. Informe o repositório `LKSFerreira/sync-antigravity` e o workflow `.github/workflows/release.yml`.
+4. Salve a configuração.
+
+O workflow usará OpenID Connect (OIDC) para solicitar um token de curta duração ao Open VSX no momento da tag. Não crie o secret `OVSX_PAT` no GitHub para o deploy normal.
+
+## 12. Criar a tag de release
+
+Quando a validação, os secrets do GitHub, o Branding e o publisher confiável estiverem prontos, crie a tag:
+
+```powershell
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+O workflow `.github/workflows/release.yml` recompila, testa, gera o VSIX, confere o conteúdo do pacote, publica o mesmo arquivo no Open VSX e cria uma release no GitHub com `SHA256SUMS`. Não crie a release manualmente.
+
+## 13. O que registrar ao final
 
 Quando terminar, informe apenas:
 
 - se a instalação limpa passou ou quais itens falharam;
-- se o namespace `lksferreira` foi criado;
+- se a propriedade do namespace `lksferreira` foi aprovada;
 - se o publisher confiável do workflow foi configurado no Open VSX;
-- se a propriedade do namespace foi solicitada;
-- se o branding do Google recebeu os links públicos.
+- se o Branding do Google está publicado e o aplicativo OAuth está em Produção;
+- a URL da release no GitHub, a URL da extensão no Open VSX e o SHA-256 publicado.
 
 Não envie token, Client ID completo, arquivo JSON de credenciais ou qualquer captura contendo esses dados.
 

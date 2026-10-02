@@ -84,12 +84,14 @@ O projeto será aberto, transparente e controlado por este fork. Ele não será 
 ## Fase 5: Preparação para o Open VSX
 
 - [x] Definir nome público final da extensão.
-- [ ] Criar conta e namespace de publisher no Open VSX.
+- [x] Criar conta, assinar o Publisher Agreement e criar o namespace de publisher no Open VSX.
+- [-] Solicitar e aguardar a aprovação da propriedade do namespace `lksferreira` no Open VSX.
 - [ ] Configurar publicação confiável via OpenID Connect (OIDC) no Open VSX.
 - [x] Atualizar `package.json` com `name`, `displayName`, `publisher`, URLs e palavras-chave próprios.
 - [x] Preparar CHANGELOG, política de privacidade e instruções de migração.
-- [ ] Criar release candidata e instalar o VSIX em uma máquina limpa.
-- [ ] Validar login Google, push, pull, extensões, snippets, rollback e layout.
+- [x] Publicar o site com instruções de uso, política de privacidade e termos de serviço em `sync.semsusto.app`.
+- [x] Criar release candidata e instalar o VSIX em outra instalação do Antigravity.
+- [-] Validar login Google, atualização, aplicação, extensões e snippets. A restauração e o rollback de layout permanecem como dívida técnica documentada.
 
 **Critério de aceite:** a release candidata funciona em uma instalação limpa e toda a documentação de publicação está pronta.
 
@@ -110,6 +112,7 @@ O projeto será aberto, transparente e controlado por este fork. Ele não será 
 | Item | Necessário para | Momento |
 | --- | --- | --- |
 | Projeto OAuth próprio no Google Cloud | autenticação independente | Fase 3 |
-| Conta e namespace no Open VSX | publicação | Fase 5 |
+| Aprovação da propriedade do namespace no Open VSX | configuração do publisher confiável | Fase 5 |
 | Publisher confiável do Open VSX (OIDC) | deploy automatizado sem token persistente | Fase 5 |
-| Máquina ou perfil limpo do Antigravity | validação de restauração e release | Fases 1 e 5 |
+| Site público e domínio verificado no Google | Branding e consentimento OAuth externo | Fase 5 |
+| Validação de layout em instalação limpa | suporte completo ao layout | Fases 1 e 5 |

@@ -14,7 +14,8 @@ Cada perfil é armazenado em uma pasta própria na appDataFolder do Google Drive
 ├── settings.json      # Configurações do editor
 ├── extensions.json    # IDs das extensões instaladas
 ├── keybindings.json   # Atalhos de teclado
-└── snippets.json      # Snippets da pessoa usuária (agrupados em base64)
+├── snippets.json      # Snippets da pessoa usuária (agrupados em base64)
+└── layout.json        # Estado visual permitido do Antigravity
 ```
 
 Um arquivo central `sync-meta.json` na raiz de appDataFolder armazena as syncKeys de todos os perfis, permitindo uma listagem rápida (duas chamadas de API em vez de N+1).
@@ -29,8 +30,8 @@ Essa estrutura permite:
 | Ação         | Descrição                                          |
 | -------------- | ---------------------------------------------------- |
 | **Criar**     | Captura as configurações, extensões, atalhos e snippets atuais em um novo perfil com itens selecionáveis |
-| **Enviar**       | Atualiza um perfil existente com sua configuração atual (caixas pré-marcadas conforme o perfil) |
-| **Baixar**       | Baixa um perfil e o aplica ao editor local (mostra somente os itens disponíveis no perfil) |
+| **Atualizar**    | Atualiza um perfil existente com sua configuração atual (caixas pré-marcadas conforme o perfil) |
+| **Aplicar**      | Aplica um perfil ao Antigravity atual, nos caminhos detectados automaticamente (mostra somente os itens disponíveis no perfil) |
 | **Excluir**     | Remove permanentemente um perfil do Google Drive       |
 
 ## ☑️ Seleção de itens de sincronização (v0.5.0+)
@@ -38,14 +39,14 @@ Essa estrutura permite:
 Escolha exatamente quais itens sincronizar em cada operação:
 
 - **Criar**: a lista de caixas de seleção aparece abaixo do nome do perfil
-- **Enviar**: o modal de confirmação exibe caixas pré-marcadas conforme as `syncKeys` existentes no perfil
-- **Baixar**: mostra somente os itens armazenados no perfil (filtrados por `meta.syncKeys`)
+- **Atualizar**: o modal de confirmação exibe caixas pré-marcadas conforme as `syncKeys` existentes no perfil
+- **Aplicar**: mostra somente os itens armazenados no perfil (filtrados por `meta.syncKeys`)
 - **Validação**: pelo menos um item deve ser selecionado para continuar
 - **Extensível**: baseado no padrão de registro `ISyncItem`; adicionar novos tipos exige apenas uma entrada no registro
 
 ## ⏳ Modal de progresso da sincronização (v0.5.0+)
 
-Cada operação de sincronização (criar, enviar, baixar) exibe um modal de progresso em tempo real:
+Cada operação de sincronização (criar, atualizar, aplicar) exibe um modal de progresso em tempo real:
 
 - **Lista de etapas**: mostra todas as etapas com ícones de status:
   - ⏳ Pendente (contorno de círculo)
@@ -58,7 +59,7 @@ Cada operação de sincronização (criar, enviar, baixar) exibe um modal de pro
 
 ## 🧩 Sincronização de extensões (v0.5.0+)
 
-Ao baixar um perfil, a extensão compara as extensões locais com o perfil remoto:
+Ao aplicar um perfil, a extensão compara as extensões locais com o perfil remoto:
 
 - **Modal de confirmação**: lista as extensões a instalar e remover antes da aplicação
 - **Opção de pular**: permite pular a sincronização de extensões e aplicar somente configurações, atalhos e snippets
