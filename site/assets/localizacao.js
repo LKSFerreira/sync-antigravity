@@ -1,6 +1,24 @@
 const IDIOMA_PADRAO = 'pt-BR';
 const IDIOMA_INGLES = 'en';
 const CHAVE_IDIOMA = 'sync-antigravity.idioma';
+const FUSOS_HORARIOS_BRASIL = new Set([
+  'America/Araguaina',
+  'America/Bahia',
+  'America/Belem',
+  'America/Boa_Vista',
+  'America/Campo_Grande',
+  'America/Cuiaba',
+  'America/Eirunepe',
+  'America/Fortaleza',
+  'America/Maceio',
+  'America/Manaus',
+  'America/Noronha',
+  'America/Porto_Velho',
+  'America/Recife',
+  'America/Rio_Branco',
+  'America/Santarem',
+  'America/Sao_Paulo'
+]);
 
 const traducoes = {
   'pt-BR': {
@@ -261,6 +279,14 @@ const traducoes = {
   }
 };
 
+function obterFusoHorarioDoNavegador() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function obterIdiomaInicial() {
   try {
     const idiomaSalvo = window.localStorage.getItem(CHAVE_IDIOMA);
@@ -271,10 +297,12 @@ function obterIdiomaInicial() {
     // A página continua utilizável quando o armazenamento local está indisponível.
   }
 
-  const idiomasDoNavegador = navigator.languages ?? [navigator.language];
-  return idiomasDoNavegador.some((idioma) => idioma?.toLowerCase().startsWith('en'))
-    ? IDIOMA_INGLES
-    : IDIOMA_PADRAO;
+  const fusoHorario = obterFusoHorarioDoNavegador();
+  if (!fusoHorario) {
+    return IDIOMA_PADRAO;
+  }
+
+  return FUSOS_HORARIOS_BRASIL.has(fusoHorario) ? IDIOMA_PADRAO : IDIOMA_INGLES;
 }
 
 function obterTraducao(chave, idioma) {
