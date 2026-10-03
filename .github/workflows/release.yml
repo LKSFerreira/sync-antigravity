@@ -12,6 +12,8 @@ jobs:
   publicar-release:
     name: Empacotar e publicar release da tag
     runs-on: ubuntu-24.04
+    env:
+      PUBLICACAO_BOOTSTRAP_ATIVA: ${{ secrets.OVSX_BOOTSTRAP_TOKEN != '' }}
     steps:
       - name: Obter tag de release
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -74,20 +76,17 @@ jobs:
               exit 1
             fi
 
-            echo "MODO_PUBLICACAO_OPEN_VSX=bootstrap" >> "$GITHUB_ENV"
             exit 0
           fi
 
-          echo "MODO_PUBLICACAO_OPEN_VSX=oidc" >> "$GITHUB_ENV"
-
       - name: Publicar primeira versão no Open VSX
-        if: env.MODO_PUBLICACAO_OPEN_VSX == 'bootstrap'
+        if: env.PUBLICACAO_BOOTSTRAP_ATIVA == 'true'
         env:
           OVSX_PAT: ${{ secrets.OVSX_BOOTSTRAP_TOKEN }}
         run: npx --no-install ovsx publish artifacts/sync-antigravity.vsix
 
       - name: Publicar versões seguintes no Open VSX por OIDC
-        if: env.MODO_PUBLICACAO_OPEN_VSX == 'oidc'
+        if: env.PUBLICACAO_BOOTSTRAP_ATIVA != 'true'
         run: npx --no-install ovsx publish artifacts/sync-antigravity.vsix --trusted-publishing
 
       - name: Publicar release da tag
