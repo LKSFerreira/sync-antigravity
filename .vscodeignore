@@ -23,5 +23,7 @@ package-lock.json
 dist/**/*.map
 .gitnexus/**
 .claude/**
+.agents/**
+.metadocs/**
 AGENTS.md
 CLAUDE.md
