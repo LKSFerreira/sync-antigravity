@@ -41,7 +41,7 @@ O teste exige cobertura global mínima de 80%. O último comando cria o artefato
 
 ## Publicação
 
-Siga o [guia de validação e publicação](GUIA-VALIDACAO-E-PUBLICACAO.md). A publicação de releases usa OpenID Connect (OIDC): o GitHub Actions obtém um token curto do Open VSX durante a execução, sem guardar um token de publicação no repositório. Antes da primeira tag, a propriedade do namespace `lksferreira` precisa estar aprovada no Open VSX e o workflow `.github/workflows/release.yml` precisa estar registrado como publisher confiável.
+Siga o [guia de validação e publicação](GUIA-VALIDACAO-E-PUBLICACAO.md). A primeira tag usa um token temporário, exclusivo para o bootstrap da versão `v0.7.17`. Depois que essa versão estiver ativa no Open VSX, o workflow `.github/workflows/release.yml` será registrado como publisher confiável e as versões seguintes usarão OpenID Connect (OIDC), sem token persistente.
 
 Após validar a release candidata, crie e envie uma tag versionada:
 

@@ -22,15 +22,28 @@ Criar um namespace não o torna automaticamente verificado. No perfil do Open VS
 
 Enquanto a aprovação estiver pendente, o Open VSX mostra um aviso de namespace não verificado. Aguarde a resposta na issue de solicitação antes de configurar a publicação confiável.
 
+## Bootstrap da primeira versão
+
+O Open VSX exige uma extensão com versão ativa antes de permitir o cadastro de um publisher confiável. A primeira versão é publicada por um token temporário, mas ainda passa integralmente pelo GitHub Actions.
+
+1. Crie um token em **Open VSX > Settings > Access Tokens**.
+2. Adicione-o temporariamente ao GitHub como `OVSX_BOOTSTRAP_TOKEN`.
+3. Crie e envie a tag inicial `v0.7.17`.
+4. Confirme a publicação de `lksferreira.sync-antigravity` no Open VSX e a release no GitHub.
+5. Exclua `OVSX_BOOTSTRAP_TOKEN` do GitHub e revogue o token no Open VSX.
+
+O workflow permite o token apenas na tag `v0.7.17`. Se ele permanecer configurado em uma tag posterior, o workflow falha antes de criar uma release incompleta.
+
 ## Publicação confiável pelo GitHub Actions
 
-Depois de aprovada a propriedade:
+Depois que `lksferreira.sync-antigravity` tiver uma versão ativa:
 
-1. No Open VSX, abra **Settings > Trusted publishers**.
-2. Selecione o namespace `lksferreira`.
-3. Adicione um publisher do tipo **GitHub Actions**.
-4. Informe o repositório `LKSFerreira/sync-antigravity` e o workflow `.github/workflows/release.yml`.
-5. Salve a configuração.
+1. No Open VSX, abra **Settings > Trusted publishers** e escolha o namespace `lksferreira`.
+2. Adicione um publisher do tipo **GitHub Actions**.
+3. Preencha **Organization or User name** com `LKSFerreira`.
+4. Preencha **Repository name** com `sync-antigravity`.
+5. Preencha **Workflow filename** com `release.yml`.
+6. Deixe **Environment name** vazio e salve.
 
 O workflow recebe um token OIDC de curta duração no momento da publicação. Não crie nem salve `OVSX_PAT` como secret do GitHub para o deploy normal.
 

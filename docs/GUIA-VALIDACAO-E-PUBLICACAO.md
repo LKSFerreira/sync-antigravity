@@ -1,6 +1,6 @@
 # Guia detalhado: validar, configurar e publicar
 
-Este guia prepara o Sync Antigravity para uma publicação verificável. Execute as etapas na ordem indicada e não crie uma tag de release enquanto o namespace e o publisher confiável do Open VSX estiverem pendentes.
+Este guia prepara o Sync Antigravity para uma publicação verificável. Execute as etapas na ordem indicada e não crie uma tag de release enquanto a propriedade do namespace ou os requisitos do OAuth estiverem pendentes.
 
 ## Visão geral
 
@@ -9,8 +9,9 @@ Este guia prepara o Sync Antigravity para uma publicação verificável. Execute
 3. Registrar as credenciais de build no GitHub.
 4. Confirmar o site público e o Branding do OAuth.
 5. Aguardar a aprovação da propriedade do namespace no Open VSX.
-6. Vincular o workflow do GitHub como publisher confiável no Open VSX.
-7. Criar uma tag para o GitHub Actions publicar o VSIX, o hash e a release.
+6. Publicar a primeira versão por um token temporário e restrito ao bootstrap.
+7. Vincular o workflow do GitHub como publisher confiável no Open VSX.
+8. Criar tags futuras para o GitHub Actions publicar por OIDC.
 
 ## 1. Antes de começar
 
@@ -117,7 +118,7 @@ O Open VSX exige um Publisher Agreement da Eclipse Foundation. Faça isso uma ú
 6. Use **Claim Ownership** para abrir a solicitação pública de propriedade. Para este projeto, a evidência é a correspondência entre o namespace `lksferreira`, a conta GitHub `LKSFerreira` e o repositório `LKSFerreira/sync-antigravity`.
 7. Aguarde a aprovação da solicitação. Enquanto o namespace estiver marcado como não verificado, não é possível registrar o publisher confiável.
 
-Não é necessário criar um token de acesso pessoal do Open VSX para o fluxo de release deste projeto. O token só seria necessário para um envio manual excepcional; não o crie nem o armazene no GitHub sem uma necessidade concreta.
+O Open VSX exige que a extensão possua uma versão ativa antes de aceitar o cadastro de um publisher confiável. Por isso, a primeira publicação usa um token temporário apenas uma vez. As versões seguintes não usarão token persistente.
 
 ## 9. Credenciais do cliente OAuth para a release
 
@@ -140,20 +141,44 @@ O Branding deve usar páginas públicas do projeto, hospedadas no mesmo domínio
 6. Salve e, quando o botão estiver disponível, selecione **Publicar branding**. A publicação do Branding não publica o código nem a extensão: ela apenas disponibiliza as informações do aplicativo na tela de consentimento.
 7. Em **Público-alvo**, confirme o estado desejado. Para uso público, o aplicativo deve estar em **Produção** e pode exigir análise do Google antes de deixar de mostrar avisos.
 
-## 11. Configurar publicação confiável por OIDC
+## 11. Publicar a primeira versão por bootstrap
 
-Execute esta etapa somente depois que o Open VSX aprovar a propriedade do namespace:
+O workflow aceita o secret temporário `OVSX_BOOTSTRAP_TOKEN` somente para a tag `v0.7.17`. Ele falha deliberadamente se esse secret permanecer configurado em qualquer outra tag.
 
-1. No Open VSX, abra **Settings > Trusted publishers** e selecione o namespace `lksferreira`.
+1. No Open VSX, abra **Settings > Access Tokens** e escolha criar um token novo.
+2. Dê a ele um nome identificável, como `Bootstrap Sync Antigravity v0.7.17`.
+3. Copie o valor uma única vez, sem enviá-lo por chat, e abra **GitHub > Settings > Secrets and variables > Actions**.
+4. Crie o repository secret `OVSX_BOOTSTRAP_TOKEN` com esse valor.
+5. Confirme que `package.json` possui a versão `0.7.17` e crie a tag inicial:
+
+```powershell
+git tag -a v0.7.17 -m "Release v0.7.17"
+git push origin v0.7.17
+```
+
+6. Acompanhe o workflow **Release verificável** no GitHub Actions. Ele compila, testa, gera o VSIX, calcula o SHA-256, publica o VSIX no Open VSX e cria a release no GitHub.
+7. Confirme que a página `lksferreira.sync-antigravity` possui uma versão ativa no Open VSX.
+8. Exclua imediatamente o secret `OVSX_BOOTSTRAP_TOKEN` no GitHub e revogue o token em **Open VSX > Settings > Access Tokens**.
+
+Não reutilize esse token e não crie outra tag enquanto ele ainda existir no GitHub.
+
+## 12. Configurar publicação confiável por OIDC
+
+Execute esta etapa somente depois que a primeira versão estiver ativa no Open VSX:
+
+1. No Open VSX, abra **Settings > Trusted publishers** e escolha o namespace `lksferreira`.
 2. Adicione um publisher do tipo **GitHub Actions**.
-3. Informe o repositório `LKSFerreira/sync-antigravity` e o workflow `.github/workflows/release.yml`.
-4. Salve a configuração.
+3. Informe **Organization or User name** como `LKSFerreira`.
+4. Informe **Repository name** como `sync-antigravity`.
+5. Informe **Workflow filename** como `release.yml`.
+6. Deixe **Environment name** vazio.
+7. Salve a configuração.
 
 O workflow usará OpenID Connect (OIDC) para solicitar um token de curta duração ao Open VSX no momento da tag. Não crie o secret `OVSX_PAT` no GitHub para o deploy normal.
 
-## 12. Criar a tag de release
+## 13. Criar as tags de release seguintes
 
-Quando a validação, os secrets do GitHub, o Branding e o publisher confiável estiverem prontos, crie a tag:
+Depois de remover o secret de bootstrap e configurar o publisher confiável, as próximas versões seguem este fluxo:
 
 ```powershell
 git tag -a vX.Y.Z -m "Release vX.Y.Z"
@@ -162,7 +187,7 @@ git push origin vX.Y.Z
 
 O workflow `.github/workflows/release.yml` recompila, testa, gera o VSIX, confere o conteúdo do pacote, publica o mesmo arquivo no Open VSX e cria uma release no GitHub com `SHA256SUMS`. Não crie a release manualmente.
 
-## 13. O que registrar ao final
+## 14. O que registrar ao final
 
 Quando terminar, informe apenas:
 

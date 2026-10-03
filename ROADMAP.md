@@ -85,7 +85,8 @@ O projeto será aberto, transparente e controlado por este fork. Ele não será 
 
 - [x] Definir nome público final da extensão.
 - [x] Criar conta, assinar o Publisher Agreement e criar o namespace de publisher no Open VSX.
-- [-] Solicitar e aguardar a aprovação da propriedade do namespace `lksferreira` no Open VSX.
+- [x] Obter a aprovação da propriedade do namespace `lksferreira` no Open VSX.
+- [x] Preparar bootstrap temporário e restrito para a primeira publicação no Open VSX.
 - [ ] Configurar publicação confiável via OpenID Connect (OIDC) no Open VSX.
 - [x] Atualizar `package.json` com `name`, `displayName`, `publisher`, URLs e palavras-chave próprios.
 - [x] Preparar CHANGELOG, política de privacidade e instruções de migração.
@@ -112,7 +113,7 @@ O projeto será aberto, transparente e controlado por este fork. Ele não será 
 | Item | Necessário para | Momento |
 | --- | --- | --- |
 | Projeto OAuth próprio no Google Cloud | autenticação independente | Fase 3 |
-| Aprovação da propriedade do namespace no Open VSX | configuração do publisher confiável | Fase 5 |
+| Token temporário de bootstrap do Open VSX | primeira versão ativa no registry | Fase 5 |
 | Publisher confiável do Open VSX (OIDC) | deploy automatizado sem token persistente | Fase 5 |
 | Site público e domínio verificado no Google | Branding e consentimento OAuth externo | Fase 5 |
 | Validação de layout em instalação limpa | suporte completo ao layout | Fases 1 e 5 |
