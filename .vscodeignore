@@ -13,6 +13,7 @@ images/icon_original.png
 artifacts/**
 .github/**
 docs/**
+site/**
 ROADMAP.md
 FEATURES.md
 tsconfig.json
