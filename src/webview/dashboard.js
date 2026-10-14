@@ -1166,7 +1166,7 @@
                         ${modified}
                     </div>
                     <div class="profile-actions">
-                        <button class="btn btn-primary btn-sm"
+                        <button class="btn btn-accent btn-sm"
                                 data-action="pull" data-file="${escapeAttr(p.fileName)}"
                                 title="Aplicar este perfil nesta instalação do Antigravity">
                             <span class="codicon codicon-cloud-download"></span>
