@@ -1,30 +1,44 @@
 # Changelog
 
-## [Unreleased]
+> 🇧🇷 **Prefere ler em português? Acesse o [changelog em pt-BR](CHANGELOG.pt-BR.md).**
+
+## [0.7.18] - 2026-10-13
+
+### Changed
+
+- The English README is now the extension's primary presentation, with a direct link to the preserved Brazilian Portuguese version.
+- Release notes are now maintained in English and Brazilian Portuguese.
+- The **Aplicar** action on profile cards now uses the project's standard green accent.
+
+## [0.7.17] - 2026-10-04
 
 ### Added
-- Identidade independente do **Sync Antigravity**, com publisher `lksferreira` e documentação própria.
-- Sincronização de layout global e por workspace, com prévia e rollback local.
-- Login Google com PKCE, armazenamento seguro de tokens e escopo mínimo `drive.appdata`.
-- Testes automatizados, cobertura mínima de 80%, CI, CodeQL, varredura de segredos e empacotamento verificável do VSIX.
+
+- Independent **Sync Antigravity** identity, with the `lksferreira` publisher and dedicated documentation.
+- Global and per-workspace layout synchronization, with a preview and local rollback.
+- Google sign-in with PKCE, secure token storage, and the minimum `drive.appdata` scope.
+- Automated tests, minimum 80% coverage, CI, CodeQL, secret scanning, and verifiable VSIX packaging.
 
 ### Fixed
-- A confirmação no navegador agora só informa sucesso depois que os tokens OAuth foram recebidos e salvos pela extensão.
-- A troca de tokens possui limite de 30 segundos e erros de login são registrados no canal `Sync Antigravity`.
-- A barra de status é atualizada imediatamente ao iniciar ou encerrar a sessão.
-- O redirecionamento OAuth usa o endereço de loopback `127.0.0.1`, compatível com o fluxo recomendado para aplicativos de computador.
-- O cliente OAuth desktop envia o `client_secret` técnico exigido pelo Google na troca e atualização de tokens.
-- A página da extensão prioriza instalação e uso; as instruções de desenvolvimento foram movidas para `docs/DESENVOLVIMENTO.md`.
-- Corrigido o carregamento do SQLite no VSIX: o adaptador de layout usa o carregador JavaScript distribuído ao lado do WebAssembly, evitando falha ao criar perfis.
-- A ação de restauração passou a se chamar **Aplicar** e detecta automaticamente os arquivos da instalação atual do Antigravity, sem permitir a seleção manual de diretórios.
-- Corrigida a aplicação de layout no Windows quando o Antigravity mantém `state.vscdb` bloqueado: a troca é programada com segurança para a próxima saída completa da IDE.
+
+- Browser confirmation now reports success only after OAuth tokens have been received and saved by the extension.
+- Token exchange has a 30-second timeout, and sign-in errors are recorded in the `Sync Antigravity` output channel.
+- The status bar is updated immediately after signing in or out.
+- OAuth redirection uses the `127.0.0.1` loopback address, compatible with the recommended flow for desktop applications.
+- The desktop OAuth client sends the technical `client_secret` required by Google when exchanging and refreshing tokens.
+- The extension page prioritizes installation and usage; development instructions were moved to `docs/DESENVOLVIMENTO.md`.
+- Fixed SQLite loading in the VSIX: the layout adapter uses the JavaScript loader distributed alongside WebAssembly, preventing failures when creating profiles.
+- The restore action is now named **Aplicar** and automatically detects files from the current Antigravity installation without allowing manual directory selection.
+- Fixed layout application on Windows when Antigravity keeps `state.vscdb` locked: replacement is safely scheduled for the next complete IDE shutdown.
 
 ### Security
-- Credenciais locais, prévias e arquivos de desenvolvimento são excluídos explicitamente do VSIX.
-- O arquivo `.env` e o JSON de credenciais permanecem fora do Git e do VSIX; o identificador técnico exigido pelo OAuth desktop é compilado no bundle e não é um token de usuário.
+
+- Local credentials, previews, and development files are explicitly excluded from the VSIX.
+- The `.env` file and credentials JSON remain outside Git and the VSIX; the technical identifier required by the desktop OAuth client is compiled into the bundle and is not a user token.
 
 ### Migration
-- Esta distribuição usa projeto Google Cloud e publisher próprios. Após instalar, faça login novamente e valide seus perfis antes de restaurá-los. Consulte [docs/MIGRACAO.md](docs/MIGRACAO.md).
+
+- This distribution uses its own Google Cloud project and publisher. After installing it, sign in again and validate your profiles before restoring them. See [docs/MIGRACAO.md](docs/MIGRACAO.md).
 
 ## [0.7.4] - 2026-06-16
 

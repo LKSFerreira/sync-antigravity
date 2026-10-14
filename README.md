@@ -1,78 +1,80 @@
 # Sync Antigravity
 
-[![Licença: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
-[![Código-fonte](https://img.shields.io/badge/GitHub-LKSFerreira%2Fsync--antigravity-blue)](https://github.com/LKSFerreira/sync-antigravity)
+> 🇧🇷 **Prefere ler em português? Acesse o [README em pt-BR](README.pt-BR.md).**
 
-Sincronize configurações, extensões, atalhos, snippets e layout do **Antigravity IDE** entre dispositivos usando o **Google Drive**.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+[![Source code](https://img.shields.io/badge/GitHub-LKSFerreira%2Fsync--antigravity-blue)](https://github.com/LKSFerreira/sync-antigravity)
 
-Saiba como instalar e usar a extensão no [site do Sync Antigravity](https://sync.semsusto.app/).
+Sync settings, extensions, keyboard shortcuts, snippets, and the **Antigravity IDE** layout across devices using **Google Drive**.
 
-> **Fork independente:** mantido por [LKSFerreira](https://github.com/LKSFerreira), derivado de [thotam/antigravity-sync](https://github.com/thotam/antigravity-sync) e distribuído sob a licença MIT.
+Learn how to install and use the extension on the [Sync Antigravity website](https://sync.semsusto.app/).
 
-> Esta extensão foi projetada exclusivamente para o [Antigravity IDE](https://www.antigravity.google/).
+> **Independent fork:** maintained by [LKSFerreira](https://github.com/LKSFerreira), derived from [thotam/antigravity-sync](https://github.com/thotam/antigravity-sync), and distributed under the MIT License.
 
-## O que ela sincroniza
+> This extension is designed exclusively for [Antigravity IDE](https://www.antigravity.google/).
 
-| Item | Sincronizado |
+## What it syncs
+
+| Item | Synchronized |
 | --- | --- |
-| Configurações (`settings.json`) | Sim |
-| Atalhos (`keybindings.json`) | Sim |
-| Extensões | Sim, após confirmação |
-| Snippets | Sim |
-| Layout da IDE | Sim, com prévia e backup local |
+| Settings (`settings.json`) | Yes |
+| Keyboard shortcuts (`keybindings.json`) | Yes |
+| Extensions | Yes, after confirmation |
+| Snippets | Yes |
+| IDE layout | Yes, with a preview and local backup |
 
-Os perfis ficam no espaço privado `appDataFolder` do Google Drive. Eles não aparecem nos arquivos comuns do Drive e só podem ser acessados por este aplicativo autorizado.
+Profiles are stored in Google Drive's private `appDataFolder` space. They do not appear among your regular Drive files and can only be accessed by this authorized application.
 
-## Instalação
+## Installation
 
-### Pelo Open VSX
+### From Open VSX
 
-Após a primeira publicação, pesquise por **Sync Antigravity** no painel de extensões do Antigravity ou acesse a página da extensão no Open VSX.
+Search for **Sync Antigravity** in Antigravity's Extensions panel or open the [extension page on Open VSX](https://open-vsx.org/extension/lksferreira/sync-antigravity).
 
-### Pelo VSIX
+### From a VSIX file
 
-1. Baixe o arquivo `.vsix` na página de [releases do projeto](https://github.com/LKSFerreira/sync-antigravity/releases).
-2. No Antigravity, abra **Extensões**.
-3. Abra o menu `...` e escolha **Instalar do VSIX**.
-4. Selecione o arquivo baixado.
+1. Download the `.vsix` file from the project's [releases page](https://github.com/LKSFerreira/sync-antigravity/releases).
+2. In Antigravity, open **Extensions**.
+3. Open the `...` menu and select **Install from VSIX**.
+4. Select the downloaded file.
 
-## Primeiro uso
+## First use
 
-1. Abra a Paleta de Comandos com `Ctrl+Shift+P` ou `Cmd+Shift+P`.
-2. Execute **Sync Antigravity: Abrir painel** - ou clique em **Sync Antigravity** na barra de status.
-3. Selecione **Iniciar sessão com o Google** e conclua a autorização no navegador.
-4. De volta ao painel, crie um perfil com um nome identificável, como `Notebook pessoal`.
-5. Escolha os itens que deseja incluir e envie o perfil.
+1. Open the Command Palette with `Ctrl+Shift+P` or `Cmd+Shift+P`.
+2. Run **Sync Antigravity: Abrir painel**, or select **Sync Antigravity** in the status bar.
+3. Select **Iniciar sessão com o Google** and complete the authorization in your browser.
+4. Back in the dashboard, create a profile with a recognizable name, such as `Personal laptop`.
+5. Choose the items you want to include and upload the profile.
 
-No outro computador, instale a extensão, entre na **mesma conta Google**, abra o painel e escolha **Aplicar** no perfil desejado. A extensão detecta automaticamente os caminhos da instalação atual do Antigravity, mostra uma prévia antes de alterar dados e pede confirmação antes de instalar ou remover extensões. Recarregue a janela quando solicitado.
+On another computer, install the extension, sign in to the **same Google Account**, open the dashboard, and select **Aplicar** on the desired profile. The extension automatically detects the current Antigravity installation paths, displays a preview before changing data, and asks for confirmation before installing or removing extensions. Reload the window when prompted.
 
-## Segurança e privacidade
+## Security and privacy
 
-- A extensão solicita somente o escopo `drive.appdata` do Google Drive.
-- Os tokens OAuth ficam no armazenamento seguro local da IDE (`SecretStorage`), nunca no perfil sincronizado ou no repositório.
-- O layout é filtrado por uma lista de chaves visuais permitidas e recebe backup local antes da restauração.
-- Dados remotos são validados antes de afetarem configurações locais.
+- The extension requests only the Google Drive `drive.appdata` scope.
+- OAuth tokens are stored in the IDE's local secure storage (`SecretStorage`), never in a synchronized profile or in the repository.
+- Layout data is filtered through an allowlist of visual keys and backed up locally before restoration.
+- Remote data is validated before it can affect local settings.
 
-Leia a [Política de privacidade](https://sync.semsusto.app/privacidade/) e os [Termos de serviço](https://sync.semsusto.app/termos/).
+Read the [Privacy Policy](https://sync.semsusto.app/privacidade/) and [Terms of Service](https://sync.semsusto.app/termos/).
 
-## Ajuda
+## Help
 
-| Comando | Finalidade |
+| Command | Purpose |
 | --- | --- |
-| **Sync Antigravity: Abrir painel** | Abre o painel de login e perfis. |
-| **Sync Antigravity: Reverter último layout** | Restaura o backup local mais recente do layout. |
+| **Sync Antigravity: Abrir painel** | Opens the login and profiles dashboard. |
+| **Sync Antigravity: Reverter último layout** | Restores the most recent local layout backup. |
 
-Se algo não funcionar como esperado, abra uma [issue no GitHub](https://github.com/LKSFerreira/sync-antigravity/issues) descrevendo a versão do Antigravity, a versão da extensão e os passos para reproduzir o problema. Não envie tokens, credenciais ou arquivos de configuração com dados sensíveis.
+If something does not work as expected, [open a GitHub issue](https://github.com/LKSFerreira/sync-antigravity/issues) and include the Antigravity version, extension version, and steps to reproduce the problem. Do not submit tokens, credentials, or configuration files containing sensitive data.
 
-## Projeto e desenvolvimento
+## Project and development
 
-O [site público](https://sync.semsusto.app/) reúne a instalação e o primeiro uso. O código-fonte, a documentação técnica, as instruções para contribuir e o processo de publicação ficam no [repositório do projeto](https://github.com/LKSFerreira/sync-antigravity).
+The [public website](https://sync.semsusto.app/) covers installation and first use. Source code, technical documentation, contribution instructions, and the release process are available in the [project repository](https://github.com/LKSFerreira/sync-antigravity).
 
-- [Documentação dos recursos](https://github.com/LKSFerreira/sync-antigravity/blob/main/FEATURES.md)
-- [Guia de desenvolvimento](https://github.com/LKSFerreira/sync-antigravity/blob/main/docs/DESENVOLVIMENTO.md)
-- [Notas de versão](https://github.com/LKSFerreira/sync-antigravity/blob/main/CHANGELOG.md)
-- [Roteiro do projeto](https://github.com/LKSFerreira/sync-antigravity/blob/main/ROADMAP.md)
+- [Feature documentation](https://github.com/LKSFerreira/sync-antigravity/blob/main/FEATURES.md)
+- [Development guide](https://github.com/LKSFerreira/sync-antigravity/blob/main/docs/DESENVOLVIMENTO.md)
+- [Release notes](https://github.com/LKSFerreira/sync-antigravity/blob/main/CHANGELOG.md)
+- [Roadmap](https://github.com/LKSFerreira/sync-antigravity/blob/main/ROADMAP.md)
 
-## Licença
+## License
 
 [MIT](LICENSE.md)

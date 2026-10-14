@@ -2,7 +2,7 @@
     "name": "sync-antigravity",
     "displayName": "Sync Antigravity",
     "description": "Sincronize configurações, extensões, atalhos, snippets e layout do Antigravity entre dispositivos usando o Google Drive",
-    "version": "0.7.17",
+    "version": "0.7.18",
     "publisher": "lksferreira",
     "author": {
         "name": "LKSFerreira"
