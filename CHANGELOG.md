@@ -9,6 +9,7 @@
 - The English README is now the extension's primary presentation, with a direct link to the preserved Brazilian Portuguese version.
 - Release notes are now maintained in English and Brazilian Portuguese.
 - The **Aplicar** action on profile cards now uses the project's standard green accent.
+- The release workflow now publishes exclusively through Open VSX Trusted Publishing with OIDC; the temporary bootstrap secret has been removed.
 
 ## [0.7.17] - 2026-10-04
 

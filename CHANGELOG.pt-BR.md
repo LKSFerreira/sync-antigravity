@@ -9,6 +9,7 @@
 - O README em inglês agora é a apresentação principal da extensão, com um link direto para a versão preservada em português do Brasil.
 - As notas de versão agora são mantidas em inglês e português do Brasil.
 - A ação **Aplicar** nos cartões de perfil agora usa o verde padrão do projeto.
+- O workflow de release agora publica exclusivamente pelo Trusted Publishing do Open VSX com OIDC; o secret temporário de bootstrap foi removido.
 
 ## [0.7.17] - 2026-10-04
 

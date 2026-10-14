@@ -41,7 +41,7 @@ O teste exige cobertura global mínima de 80%. O último comando cria o artefato
 
 ## Publicação
 
-Siga o [guia de validação e publicação](GUIA-VALIDACAO-E-PUBLICACAO.md). A primeira tag usa um token temporário, exclusivo para o bootstrap da versão `v0.7.17`. Depois que essa versão estiver ativa no Open VSX, o workflow `.github/workflows/release.yml` será registrado como publisher confiável e as versões seguintes usarão OpenID Connect (OIDC), sem token persistente.
+Siga o [guia de validação e publicação](GUIA-VALIDACAO-E-PUBLICACAO.md). O bootstrap da versão `v0.7.17` foi encerrado, o token temporário foi removido e o workflow `.github/workflows/release.yml` publica exclusivamente por OpenID Connect (OIDC), sem token persistente do Open VSX.
 
 Após validar a release candidata, crie e envie uma tag versionada:
 

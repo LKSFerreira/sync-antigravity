@@ -12,8 +12,6 @@ jobs:
   publicar-release:
     name: Empacotar e publicar release da tag
     runs-on: ubuntu-24.04
-    env:
-      PUBLICACAO_BOOTSTRAP_ATIVA: ${{ secrets.OVSX_BOOTSTRAP_TOKEN != '' }}
     steps:
       - name: Obter tag de release
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -59,9 +57,7 @@ jobs:
       - name: Gerar hash SHA-256
         run: sha256sum artifacts/sync-antigravity.vsix > artifacts/SHA256SUMS
 
-      - name: Definir modo de publicação no Open VSX
-        env:
-          OVSX_BOOTSTRAP_TOKEN: ${{ secrets.OVSX_BOOTSTRAP_TOKEN }}
+      - name: Validar versão da tag
         run: |
           VERSAO_PACOTE="$(node -p "require('./package.json').version")"
 
@@ -70,23 +66,7 @@ jobs:
             exit 1
           fi
 
-          if [[ -n "${OVSX_BOOTSTRAP_TOKEN}" ]]; then
-            if [[ "${GITHUB_REF_NAME}" != "v0.7.17" ]]; then
-              echo "OVSX_BOOTSTRAP_TOKEN só pode publicar a tag inicial v0.7.17. Remova o secret antes de publicar outra versão."
-              exit 1
-            fi
-
-            exit 0
-          fi
-
-      - name: Publicar primeira versão no Open VSX
-        if: env.PUBLICACAO_BOOTSTRAP_ATIVA == 'true'
-        env:
-          OVSX_PAT: ${{ secrets.OVSX_BOOTSTRAP_TOKEN }}
-        run: npx --no-install ovsx publish artifacts/sync-antigravity.vsix
-
-      - name: Publicar versões seguintes no Open VSX por OIDC
-        if: env.PUBLICACAO_BOOTSTRAP_ATIVA != 'true'
+      - name: Publicar no Open VSX por OIDC
         run: npx --no-install ovsx publish artifacts/sync-antigravity.vsix --trusted-publishing
 
       - name: Publicar release da tag

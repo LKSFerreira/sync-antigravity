@@ -2,48 +2,42 @@
 
 O Sync Antigravity é publicado como `lksferreira.sync-antigravity`. A release é automatizada pelo GitHub Actions, com OpenID Connect (OIDC), e não usa token persistente no repositório.
 
-## Pré-requisitos
+## Estado permanente da publicação
 
-Antes da primeira tag, confirme:
+O bootstrap foi concluído na versão `v0.7.17`. Em 13 de outubro de 2026, a ausência do secret `OVSX_BOOTSTRAP_TOKEN` foi confirmada pela API do GitHub, e o publisher confiável abaixo estava ativo no Open VSX:
 
-- O Publisher Agreement da Eclipse Foundation foi assinado.
-- O namespace `lksferreira` existe no Open VSX.
-- A propriedade do namespace foi solicitada e aprovada.
-- Os secrets `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` existem em **GitHub > Settings > Secrets and variables > Actions**.
-- A release candidata foi validada conforme [VALIDACAO-RELEASE-CANDIDATA.md](VALIDACAO-RELEASE-CANDIDATA.md), mantendo a dívida técnica de layout registrada.
+- namespace: `lksferreira`;
+- conta ou organização: `LKSFerreira`;
+- repositório: `sync-antigravity`;
+- workflow: `release.yml`;
+- ambiente: não configurado.
+
+O workflow publica exclusivamente por OpenID Connect. Não recrie `OVSX_BOOTSTRAP_TOKEN`, `OVSX_PAT` ou outro token persistente para releases normais. Os únicos Repository secrets exigidos pelo build são `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`.
 
 ## Propriedade do namespace
 
-Criar um namespace não o torna automaticamente verificado. No perfil do Open VSX, abra o namespace `lksferreira` e escolha **Claim Ownership**. A solicitação pública deve relacionar:
+O namespace `lksferreira` teve sua propriedade aprovada e aparece como verificado no Open VSX. A comprovação relacionou:
 
 - namespace: `lksferreira`;
 - conta GitHub: `LKSFerreira`;
 - repositório: `https://github.com/LKSFerreira/sync-antigravity`.
 
-Enquanto a aprovação estiver pendente, o Open VSX mostra um aviso de namespace não verificado. Aguarde a resposta na issue de solicitação antes de configurar a publicação confiável.
+## Histórico do bootstrap
 
-## Bootstrap da primeira versão
+O Open VSX exigia uma extensão ativa antes de permitir o cadastro do publisher confiável. Por isso, `v0.7.17` foi publicada uma única vez com um token temporário.
 
-O Open VSX exige uma extensão com versão ativa antes de permitir o cadastro de um publisher confiável. A primeira versão é publicada por um token temporário, mas ainda passa integralmente pelo GitHub Actions.
-
-1. Crie um token em **Open VSX > Settings > Access Tokens**.
-2. Adicione-o temporariamente ao GitHub como `OVSX_BOOTSTRAP_TOKEN`.
-3. Crie e envie a tag inicial `v0.7.17`.
-4. Confirme a publicação de `lksferreira.sync-antigravity` no Open VSX e a release no GitHub.
-5. Exclua `OVSX_BOOTSTRAP_TOKEN` do GitHub e revogue o token no Open VSX.
-
-O workflow permite o token apenas na tag `v0.7.17`. Se ele permanecer configurado em uma tag posterior, o workflow falha antes de criar uma release incompleta.
+Esse caminho foi removido de `.github/workflows/release.yml` e não faz mais parte do procedimento operacional. Se a publicação OIDC falhar, corrija o vínculo do publisher confiável; não restaure o token de bootstrap.
 
 ## Publicação confiável pelo GitHub Actions
 
-Depois que `lksferreira.sync-antigravity` tiver uma versão ativa:
+O vínculo ativo usa estes valores:
 
-1. No Open VSX, abra **Settings > Trusted publishers** e escolha o namespace `lksferreira`.
-2. Adicione um publisher do tipo **GitHub Actions**.
-3. Preencha **Organization or User name** com `LKSFerreira`.
-4. Preencha **Repository name** com `sync-antigravity`.
-5. Preencha **Workflow filename** com `release.yml`.
-6. Deixe **Environment name** vazio e salve.
+1. **Namespace:** `lksferreira`.
+2. **Tipo:** GitHub Actions.
+3. **Organization or User name:** `LKSFerreira`.
+4. **Repository name:** `sync-antigravity`.
+5. **Workflow filename:** `release.yml`.
+6. **Environment name:** vazio.
 
 O workflow recebe um token OIDC de curta duração no momento da publicação. Não crie nem salve `OVSX_PAT` como secret do GitHub para o deploy normal.
 

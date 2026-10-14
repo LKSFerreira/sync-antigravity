@@ -1,17 +1,14 @@
 # Guia detalhado: validar, configurar e publicar
 
-Este guia prepara o Sync Antigravity para uma publicação verificável. Execute as etapas na ordem indicada e não crie uma tag de release enquanto a propriedade do namespace ou os requisitos do OAuth estiverem pendentes.
+Este guia prepara o Sync Antigravity para uma publicação verificável. O namespace, o publisher confiável e o fluxo OIDC já estão configurados; execute as validações da candidata antes de criar uma tag.
 
 ## Visão geral
 
 1. Gerar um VSIX local verificável.
 2. Testar em uma instalação limpa do Antigravity.
-3. Registrar as credenciais de build no GitHub.
+3. Confirmar as credenciais de build do Google OAuth no GitHub.
 4. Confirmar o site público e o Branding do OAuth.
-5. Aguardar a aprovação da propriedade do namespace no Open VSX.
-6. Publicar a primeira versão por um token temporário e restrito ao bootstrap.
-7. Vincular o workflow do GitHub como publisher confiável no Open VSX.
-8. Criar tags futuras para o GitHub Actions publicar por OIDC.
+5. Criar a tag para o GitHub Actions publicar por OIDC.
 
 ## 1. Antes de começar
 
@@ -106,28 +103,25 @@ Siga este roteiro e marque o resultado no [checklist de release candidata](VALID
 
 Anote qualquer divergência: item, resultado esperado, resultado observado e captura de tela. Caso a validação de layout seja deliberadamente adiada, deixe os itens correspondentes desmarcados no [checklist](VALIDACAO-RELEASE-CANDIDATA.md) e registre a dívida técnica.
 
-## 8. Preparar a conta e o namespace no Open VSX
+## 8. Conta e namespace no Open VSX
 
-O Open VSX exige um Publisher Agreement da Eclipse Foundation. Faça isso uma única vez, caso ainda não tenha sido concluído:
+As etapas iniciais de conta e namespace foram concluídas:
 
-1. Crie uma conta em [accounts.eclipse.org](https://accounts.eclipse.org). No perfil, informe seu usuário GitHub exatamente como `LKSFerreira`.
-2. Acesse [open-vsx.org](https://open-vsx.org) e entre com a mesma conta GitHub.
-3. No avatar, abra **Settings** e escolha **Log in with Eclipse**.
-4. Abra **Show Publisher Agreement**, leia até o final e aceite se concordar.
-5. Crie ou confirme o namespace `lksferreira` no Open VSX.
-6. Use **Claim Ownership** para abrir a solicitação pública de propriedade. Para este projeto, a evidência é a correspondência entre o namespace `lksferreira`, a conta GitHub `LKSFerreira` e o repositório `LKSFerreira/sync-antigravity`.
-7. Aguarde a aprovação da solicitação. Enquanto o namespace estiver marcado como não verificado, não é possível registrar o publisher confiável.
+- o Publisher Agreement da Eclipse Foundation foi aceito;
+- o namespace `lksferreira` pertence à conta GitHub `LKSFerreira`;
+- o namespace está verificado;
+- o publisher confiável do GitHub Actions está ativo.
 
-O Open VSX exige que a extensão possua uma versão ativa antes de aceitar o cadastro de um publisher confiável. Por isso, a primeira publicação usa um token temporário apenas uma vez. As versões seguintes não usarão token persistente.
+Esse estado não precisa ser validado novamente a cada release.
 
 ## 9. Credenciais do cliente OAuth para a release
 
-Antes da primeira tag de release, crie também estes dois secrets no GitHub Actions, com os valores do seu `.env` local:
+O build da release depende somente destes dois Repository secrets no GitHub Actions:
 
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 
-Eles são usados somente durante o build da release para gerar um VSIX funcional. Em GitHub, abra **Settings > Secrets and variables > Actions > New repository secret** e crie um secret por vez. O `client_secret` de um cliente OAuth desktop não é tratado pelo Google como um segredo de usuário: ele é incluído no VSIX porque o endpoint de tokens desse cliente o exige. Nunca coloque tokens de acesso, tokens de atualização ou o arquivo JSON completo em secrets de build.
+Eles são usados somente durante o build da release para gerar um VSIX funcional. Se houver rotação das credenciais, atualize cada Repository secret em **GitHub > Settings > Secrets and variables > Actions**. O `client_secret` de um cliente OAuth desktop não é tratado pelo Google como um segredo de usuário: ele é incluído no VSIX porque o endpoint de tokens desse cliente o exige. Nunca coloque tokens de acesso, tokens de atualização ou o arquivo JSON completo em secrets de build.
 
 ## 10. Preparar e publicar o Branding do OAuth
 
@@ -141,44 +135,29 @@ O Branding deve usar páginas públicas do projeto, hospedadas no mesmo domínio
 6. Salve e, quando o botão estiver disponível, selecione **Publicar branding**. A publicação do Branding não publica o código nem a extensão: ela apenas disponibiliza as informações do aplicativo na tela de consentimento.
 7. Em **Público-alvo**, confirme o estado desejado. Para uso público, o aplicativo deve estar em **Produção** e pode exigir análise do Google antes de deixar de mostrar avisos.
 
-## 11. Publicar a primeira versão por bootstrap
+## 11. Bootstrap encerrado
 
-O workflow aceita o secret temporário `OVSX_BOOTSTRAP_TOKEN` somente para a tag `v0.7.17`. Ele falha deliberadamente se esse secret permanecer configurado em qualquer outra tag.
+O bootstrap foi usado exclusivamente na publicação de `v0.7.17` e foi encerrado. Em 13 de outubro de 2026, a API do GitHub confirmou que `OVSX_BOOTSTRAP_TOKEN` não existe mais entre os Repository secrets.
 
-1. No Open VSX, abra **Settings > Access Tokens** e escolha criar um token novo.
-2. Dê a ele um nome identificável, como `Bootstrap Sync Antigravity v0.7.17`.
-3. Copie o valor uma única vez, sem enviá-lo por chat, e abra **GitHub > Settings > Secrets and variables > Actions**.
-4. Crie o repository secret `OVSX_BOOTSTRAP_TOKEN` com esse valor.
-5. Confirme que `package.json` possui a versão `0.7.17` e crie a tag inicial:
+O workflow não contém mais caminhos condicionais para tokens persistentes e executa somente `ovsx publish --trusted-publishing`. Não recrie `OVSX_BOOTSTRAP_TOKEN` nem `OVSX_PAT`. Em caso de falha, corrija a configuração OIDC.
 
-```powershell
-git tag -a v0.7.17 -m "Release v0.7.17"
-git push origin v0.7.17
-```
+## 12. Publicação confiável por OIDC
 
-6. Acompanhe o workflow **Release verificável** no GitHub Actions. Ele compila, testa, gera o VSIX, calcula o SHA-256, publica o VSIX no Open VSX e cria a release no GitHub.
-7. Confirme que a página `lksferreira.sync-antigravity` possui uma versão ativa no Open VSX.
-8. Exclua imediatamente o secret `OVSX_BOOTSTRAP_TOKEN` no GitHub e revogue o token em **Open VSX > Settings > Access Tokens**.
+O publisher confiável já está configurado com estes valores:
 
-Não reutilize esse token e não crie outra tag enquanto ele ainda existir no GitHub.
-
-## 12. Configurar publicação confiável por OIDC
-
-Execute esta etapa somente depois que a primeira versão estiver ativa no Open VSX:
-
-1. No Open VSX, abra **Settings > Trusted publishers** e escolha o namespace `lksferreira`.
-2. Adicione um publisher do tipo **GitHub Actions**.
-3. Informe **Organization or User name** como `LKSFerreira`.
-4. Informe **Repository name** como `sync-antigravity`.
-5. Informe **Workflow filename** como `release.yml`.
-6. Deixe **Environment name** vazio.
-7. Salve a configuração.
+1. **Namespace:** `lksferreira`.
+2. **Tipo:** GitHub Actions.
+3. **Organization or User name:** `LKSFerreira`.
+4. **Repository name:** `sync-antigravity`.
+5. **Workflow filename:** `release.yml`.
+6. **Environment name:** vazio.
+7. **Estado:** ativo.
 
 O workflow usará OpenID Connect (OIDC) para solicitar um token de curta duração ao Open VSX no momento da tag. Não crie o secret `OVSX_PAT` no GitHub para o deploy normal.
 
-## 13. Criar as tags de release seguintes
+## 13. Criar uma tag de release
 
-Depois de remover o secret de bootstrap e configurar o publisher confiável, as próximas versões seguem este fluxo:
+Depois de validar a candidata e confirmar que a versão do `package.json` corresponde à tag, siga este fluxo:
 
 ```powershell
 git tag -a vX.Y.Z -m "Release vX.Y.Z"
@@ -192,8 +171,6 @@ O workflow `.github/workflows/release.yml` recompila, testa, gera o VSIX, confer
 Quando terminar, informe apenas:
 
 - se a instalação limpa passou ou quais itens falharam;
-- se a propriedade do namespace `lksferreira` foi aprovada;
-- se o publisher confiável do workflow foi configurado no Open VSX;
 - se o Branding do Google está publicado e o aplicativo OAuth está em Produção;
 - a URL da release no GitHub, a URL da extensão no Open VSX e o SHA-256 publicado.
 
