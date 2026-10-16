@@ -2,6 +2,17 @@
 
 > 🇧🇷 **Prefere ler em português? Acesse o [changelog em pt-BR](CHANGELOG.pt-BR.md).**
 
+## [0.7.19] - 2026-10-15
+
+### Added
+
+- Detection and synchronization of installed extensions that are currently disabled in the IDE, discovering them from the local extension manifest (`extensions.json`) and disk candidates.
+- Interactive extension inspection in the restore profile preview modal, featuring an expandable accordion with status tags (`Instalar`, `Remover`, `Presente`) and summary badges.
+
+### Fixed
+
+- Profile restore preview now shows the complete list of extensions included in the remote profile, eliminating ambiguity when no extension installation or deletion is pending.
+
 ## [0.7.18] - 2026-10-13
 
 ### Changed

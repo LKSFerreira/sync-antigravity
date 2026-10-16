@@ -254,9 +254,28 @@
             const layoutPreview = preview.layout || null;
             const extensionPreview = preview.extensions || null;
             const workspaces = Array.isArray(layoutPreview?.workspaces) ? layoutPreview.workspaces : [];
+            const toInstall = Array.isArray(extensionPreview?.toInstall) ? extensionPreview.toInstall : [];
+            const toDelete = Array.isArray(extensionPreview?.toDelete) ? extensionPreview.toDelete : [];
+            const profileExtensions = Array.isArray(extensionPreview?.profileExtensions) ? extensionPreview.profileExtensions : [];
+            const toInstallIds = new Set(toInstall.map((extension) => (extension.id || "").toLowerCase()));
+
             const itemList = items.length > 0
-                ? `<ul class="profile-preview-items">${items.map((item) => `<li><span>${escapeHtml(item.label || "Item")}</span><span>${escapeHtml(item.detail || "Validado")}</span></li>`).join('')}</ul>`
+                ? `<ul class="profile-preview-items">${items.map((item) => {
+                    if (item.key === "extensions" && extensionPreview) {
+                        return `
+                            <li class="profile-preview-item-interactive" data-action="toggle-extensions" title="Clique para ver ou ocultar a lista de extensões">
+                                <span><span class="codicon codicon-extensions"></span> ${escapeHtml(item.label || "Extensões")}</span>
+                                <span class="preview-item-action">
+                                    <span>${escapeHtml(item.detail || "Validado")}</span>
+                                    <span class="codicon codicon-chevron-right preview-item-chevron"></span>
+                                </span>
+                            </li>
+                        `;
+                    }
+                    return `<li><span>${escapeHtml(item.label || "Item")}</span><span>${escapeHtml(item.detail || "Validado")}</span></li>`;
+                }).join('')}</ul>`
                 : '<p class="layout-preview-muted">Nenhum item disponível para restaurar.</p>';
+
             const workspaceOptions = workspaces.length === 0
                 ? '<p class="layout-preview-muted">Este perfil não contém layout de workspace.</p>'
                 : workspaces.map((item, index) => `
@@ -283,17 +302,100 @@
                     ${workspaceOptions}
                 </div>
             ` : '';
-            const formatExtensions = (extensions) => extensions.length === 0
-                ? '<span class="layout-preview-muted">Nenhuma</span>'
-                : `<ul class="profile-preview-extension-list">${extensions.slice(0, 20).map((extension) => `<li>${escapeHtml(extension.displayName || "Extensão sem nome")}</li>`).join('')}${extensions.length > 20 ? `<li>e mais ${extensions.length - 20}</li>` : ''}</ul>`;
-            const extensionSection = extensionPreview ? `
-                <div class="layout-preview-section">
-                    <div class="sync-item-label">Alterações de extensões</div>
-                    <div class="profile-preview-extension-group"><span>Instalar (${Array.isArray(extensionPreview.toInstall) ? extensionPreview.toInstall.length : 0})</span>${formatExtensions(Array.isArray(extensionPreview.toInstall) ? extensionPreview.toInstall : [])}</div>
-                    <div class="profile-preview-extension-group"><span>Remover (${Array.isArray(extensionPreview.toDelete) ? extensionPreview.toDelete.length : 0})</span>${formatExtensions(Array.isArray(extensionPreview.toDelete) ? extensionPreview.toDelete : [])}</div>
-                    <p class="layout-preview-muted">As extensões só serão alteradas após uma confirmação adicional.</p>
-                </div>
-            ` : '';
+
+            const renderExtensionRow = (extension, tagType, tagText) => `
+                <li class="preview-extension-row">
+                    <span class="codicon codicon-package"></span>
+                    <div class="preview-extension-info">
+                        <span class="preview-extension-name" title="${escapeAttr(extension.displayName || extension.id)}">${escapeHtml(extension.displayName || extension.id)}</span>
+                        <code class="preview-extension-id">${escapeHtml(extension.id)}</code>
+                    </div>
+                    <span class="preview-tag preview-tag-${tagType}">${tagText}</span>
+                </li>
+            `;
+
+            let extensionSection = '';
+            if (extensionPreview) {
+                const totalExtensions = profileExtensions.length;
+
+                // Monta lista unificada com prioridade: 1: A instalar, 2: A remover, 3: Presentes
+                const allExtensionRows = [];
+
+                toInstall.forEach((extension) => {
+                    allExtensionRows.push({
+                        ...extension,
+                        tagType: "install",
+                        tagText: "Instalar",
+                        priority: 1,
+                    });
+                });
+
+                toDelete.forEach((extension) => {
+                    allExtensionRows.push({
+                        ...extension,
+                        tagType: "delete",
+                        tagText: "Remover",
+                        priority: 2,
+                    });
+                });
+
+                profileExtensions.forEach((extension) => {
+                    const lowerId = (extension.id || "").toLowerCase();
+                    if (!toInstallIds.has(lowerId)) {
+                        allExtensionRows.push({
+                            ...extension,
+                            tagType: "present",
+                            tagText: "Presente",
+                            priority: 3,
+                        });
+                    }
+                });
+
+                allExtensionRows.sort((first, second) => {
+                    if (first.priority !== second.priority) {
+                        return first.priority - second.priority;
+                    }
+                    return (first.displayName || first.id).localeCompare(second.displayName || second.id, "pt-BR");
+                });
+
+                const renderedRows = allExtensionRows.length > 0
+                    ? allExtensionRows.map((extension) => renderExtensionRow(extension, extension.tagType, extension.tagText)).join('')
+                    : '<li class="layout-preview-muted" style="padding: 8px;">Nenhuma extensão no perfil.</li>';
+
+                let statusBadge = '<span class="preview-tag preview-tag-present">Todas instaladas</span>';
+                if (toInstall.length > 0 || toDelete.length > 0) {
+                    const badgeParts = [];
+                    if (toInstall.length > 0) {
+                        badgeParts.push(`<span class="preview-tag preview-tag-install">${toInstall.length} para instalar</span>`);
+                    }
+                    if (toDelete.length > 0) {
+                        badgeParts.push(`<span class="preview-tag preview-tag-delete">${toDelete.length} para remover</span>`);
+                    }
+                    statusBadge = badgeParts.join(' ');
+                }
+
+                extensionSection = `
+                    <div class="layout-preview-section" id="preview-extensions-section">
+                        <div class="sync-item-label">Extensões (${totalExtensions})</div>
+                        <details class="preview-accordion" id="preview-extensions-accordion" open>
+                            <summary class="preview-accordion-summary">
+                                <div class="preview-summary-left">
+                                    <span class="codicon codicon-extensions"></span>
+                                    <span>Lista de extensões</span>
+                                </div>
+                                <div class="preview-summary-right" style="display: flex; align-items: center; gap: 6px;">
+                                    ${statusBadge}
+                                </div>
+                            </summary>
+                            <div class="preview-accordion-content">
+                                <ul class="profile-preview-extension-scroll">${renderedRows}</ul>
+                            </div>
+                        </details>
+                        <p class="layout-preview-muted" style="margin-top: 8px;">As extensões só serão alteradas após uma confirmação adicional.</p>
+                    </div>
+                `;
+            }
+
             const overlay = document.createElement("div");
             overlay.className = "modal-overlay";
             overlay.innerHTML = `
@@ -321,6 +423,17 @@
             function close(result) {
                 overlay.classList.add("modal-out");
                 setTimeout(() => { overlay.remove(); resolve(result); }, 200);
+            }
+
+            const extToggle = overlay.querySelector("[data-action='toggle-extensions']");
+            if (extToggle) {
+                extToggle.addEventListener("click", () => {
+                    const accordion = overlay.querySelector("#preview-extensions-accordion");
+                    if (accordion) {
+                        accordion.open = !accordion.open;
+                        accordion.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    }
+                });
             }
 
             overlay.querySelector("[data-modal='confirm']").addEventListener("click", () => {

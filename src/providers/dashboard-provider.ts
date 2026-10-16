@@ -240,10 +240,19 @@ export default class DashboardProvider {
                     }
                     const validated = this.controller.validateIncomingProfile(profile, syncItems);
                     if (Array.isArray(validated.profile.data.extensions)) {
-                        validated.preview.extensions = this.controller.getExtensionDiff(
+                        const extensionDiff = await this.controller.getExtensionDiff(
                             validated.profile.data.extensions,
                             validated.profile.data.extensionDisplayNames
                         );
+                        const displayNames = validated.profile.data.extensionDisplayNames || {};
+                        const profileExtensions = validated.profile.data.extensions.map((extensionId: string) => ({
+                            id: extensionId,
+                            displayName: displayNames[extensionId] || extensionId,
+                        }));
+                        validated.preview.extensions = {
+                            ...extensionDiff,
+                            profileExtensions,
+                        };
                     }
                     const restoreId = String(++this.profileRestoreSequence);
                     this.pendingProfileRestores.set(restoreId, {
@@ -421,7 +430,7 @@ export default class DashboardProvider {
         const extEnabled = syncItems.find((item) => item.key === "extensions")?.enabled;
         const extData = validatedProfile.data.extensions;
         if (extEnabled && extData && Array.isArray(extData)) {
-            const diff = this.controller.getExtensionDiff(
+            const diff = await this.controller.getExtensionDiff(
                 extData,
                 validatedProfile.data.extensionDisplayNames
             );

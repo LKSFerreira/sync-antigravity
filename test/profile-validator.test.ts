@@ -28,6 +28,9 @@ test("aceita perfil remoto válido e prepara uma prévia sem escrever arquivos",
     assert.deepEqual(profile.data.extensionDisplayNames, { "publisher.extensao": "Extensao" });
     assert.equal(Object.keys(profile.data.snippets as Record<string, string>).length, 1);
     assert.equal(preview.items.length, 5);
+    assert.deepEqual(preview.extensions?.profileExtensions, [
+        { id: "publisher.extensao", displayName: "Extensao" }
+    ]);
 });
 
 test("aceita configurações, atalhos e layout, inclusive o formato legado de workspace", () => {

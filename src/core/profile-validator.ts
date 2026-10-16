@@ -22,6 +22,7 @@ export interface IProfileRestorePreview {
     extensions?: {
         toInstall: IExtensionProfileEntry[];
         toDelete: IExtensionProfileEntry[];
+        profileExtensions?: IExtensionProfileEntry[];
     };
     layout?: {
         globalEntryCount: number;
@@ -67,6 +68,14 @@ export function validateRemoteProfile(
                 const validatedExtensions = validateExtensions(value, extensionNames);
                 data.extensions = validatedExtensions.ids;
                 data.extensionDisplayNames = validatedExtensions.displayNames;
+                preview.extensions = {
+                    toInstall: [],
+                    toDelete: [],
+                    profileExtensions: validatedExtensions.ids.map((id) => ({
+                        id,
+                        displayName: validatedExtensions.displayNames[id] || id,
+                    })),
+                };
                 preview.items.push({ key: item.key, label: item.label, detail: `${validatedExtensions.ids.length} extensão(ões)` });
                 break;
             }

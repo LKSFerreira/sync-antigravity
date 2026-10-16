@@ -2,6 +2,17 @@
 
 > 🇺🇸 **Prefer to read in English? See the [English changelog](CHANGELOG.md).**
 
+## [0.7.19] - 2026-10-15
+
+### Adicionado
+
+- Detecção e sincronização de extensões instaladas que estejam desabilitadas na IDE, obtidas a partir do manifesto local (`extensions.json`) e varredura de diretórios candidatos em disco.
+- Seção interativa de inspeção de extensões na prévia de restauração de perfil, com acordeão expansível, tags de status (`Instalar`, `Remover`, `Presente`) e badges de contagem.
+
+### Corrigido
+
+- A prévia de restauração agora exibe a lista completa de extensões do perfil remoto, eliminando a ambiguidade quando não há extensões pendentes para instalar ou remover.
+
 ## [0.7.18] - 2026-10-13
 
 ### Alterado

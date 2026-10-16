@@ -2,6 +2,7 @@
 // Compatível somente com Antigravity IDE 2.0+
 
 import { spawn } from "child_process";
+import { existsSync } from "fs";
 import { readFile, readdir, mkdir, rename, rm, unlink, writeFile } from "fs/promises";
 import * as os from "os";
 import * as path from "path";
@@ -35,6 +36,11 @@ import {
     readWorkspaceLayoutEntries,
 } from "./layout-state-database";
 import Logger from "./logger";
+import {
+    collectInstalledExtensions,
+    displayNameFromExtensionId,
+    isValidExtensionId,
+} from "./installed-extensions";
 
 export interface ILayoutRestorePreview {
     globalEntryCount: number;
@@ -211,7 +217,7 @@ export default class SyncController {
                     data.keybindings = await this.readConfigRaw("keybindings");
                     break;
                 case "extensions":
-                    const localExtensions = this.getExtensions();
+                    const localExtensions = await this.getExtensions();
                     data.extensions = localExtensions.map((entry) => entry.id);
                     data.extensionDisplayNames = Object.fromEntries(
                         localExtensions.map((entry) => [entry.id, entry.displayName])
@@ -399,19 +405,77 @@ export default class SyncController {
         }
     }
 
-    /** Obtém a lista de extensões instaladas (exceto as nativas) */
-    private getExtensions(): IExtensionProfileEntry[] {
+    /** Retorna os caminhos candidatos onde as extensões da IDE podem estar instaladas. */
+    private getExtensionDirectoryCandidates(): string[] {
+        const candidates: string[] = [];
+
+        // 1. Diretório onde esta própria extensão está instalada (válido quando empacotada na pasta de extensões)
+        const parentPaths = [
+            this.context?.extensionPath ? path.dirname(this.context.extensionPath) : undefined,
+            this.context?.extensionUri?.fsPath ? path.dirname(this.context.extensionUri.fsPath) : undefined,
+        ].filter(Boolean) as string[];
+
+        for (const parentPath of parentPaths) {
+            const baseDirectoryName = path.basename(parentPath).toLowerCase();
+            if (baseDirectoryName === "extensions" || existsSync(path.join(parentPath, "extensions.json"))) {
+                candidates.push(parentPath);
+            }
+        }
+
+        const home = os.homedir();
+        const userProfile = process.env.USERPROFILE || home;
+
+        // 2. Pastas padrão do Antigravity IDE e derivados do ecossistema VS Code
+        const knownFolders = [
+            ".antigravity-ide",
+            ".antigravity",
+            ".vscode",
+            ".vscode-insiders",
+            ".cursor",
+        ];
+
+        for (const folder of knownFolders) {
+            candidates.push(path.join(userProfile, folder, "extensions"));
+            if (userProfile !== home) {
+                candidates.push(path.join(home, folder, "extensions"));
+            }
+        }
+
+        // 3. Pastas de dados de aplicação por sistema operacional
+        if (process.platform === "win32") {
+            const appData = process.env.APPDATA;
+            if (appData) {
+                candidates.push(path.join(appData, "Antigravity IDE", "extensions"));
+            }
+        } else if (process.platform === "darwin") {
+            candidates.push(path.join(home, "Library", "Application Support", "Antigravity IDE", "extensions"));
+        } else {
+            const xdgConfig = process.env.XDG_CONFIG_HOME || path.join(home, ".config");
+            candidates.push(path.join(xdgConfig, "Antigravity IDE", "extensions"));
+        }
+
+        return [...new Set(candidates.filter(Boolean))];
+    }
+
+    /** Obtém a lista de todas as extensões instaladas (habilitadas e desabilitadas, exceto nativas). */
+    public async getExtensions(): Promise<IExtensionProfileEntry[]> {
         const excludeList =
             workspace
                 .getConfiguration("antigravitysync")
                 .get<string[]>("excludeExtensions") || [];
-        return extensions.all
-            .filter((ext: Extension<any>) => !ext.packageJSON.isBuiltin)
-            .filter((ext: Extension<any>) => !excludeList.includes(ext.id))
-            .map((ext: Extension<any>) => ({
-                id: ext.id,
-                displayName: String(ext.packageJSON.displayName || ext.packageJSON.name || ext.id),
-            }));
+
+        const activeExtensions = extensions.all.map((extension: Extension<any>) => ({
+            id: extension.id,
+            isBuiltin: Boolean(extension.packageJSON?.isBuiltin),
+            displayName: extension.packageJSON?.displayName,
+            name: extension.packageJSON?.name,
+        }));
+
+        return collectInstalledExtensions({
+            candidates: this.getExtensionDirectoryCandidates(),
+            activeExtensions,
+            excludeList,
+        });
     }
 
     // ===== Layout helpers =====
@@ -830,23 +894,34 @@ export default class SyncController {
     }
 
     /** Compara extensões locais e remotas: retorna as diferenças para confirmação do provedor */
-    public getExtensionDiff(
+    public async getExtensionDiff(
         remoteList: string[],
         remoteDisplayNames: Record<string, string> = {}
-    ): { toInstall: IExtensionProfileEntry[]; toDelete: IExtensionProfileEntry[] } {
-        const localList = this.getExtensions();
-        const localSet = new Set(localList.map((entry) => entry.id));
+    ): Promise<{ toInstall: IExtensionProfileEntry[]; toDelete: IExtensionProfileEntry[] }> {
+        const excludeList = (
+            workspace
+                .getConfiguration("antigravitysync")
+                .get<string[]>("excludeExtensions") || []
+        ).map((id) => id.toLowerCase());
+
+        const localList = await this.getExtensions();
+        const localSet = new Set(localList.map((entry) => entry.id.toLowerCase()));
+        const selfExtensionId = (this.context?.extension?.id || "lksferreira.sync-antigravity").toLowerCase();
+
         const safeRemoteList = remoteList
-            .filter((id) => this.isValidExtensionId(id))
+            .filter((id) => this.isValidExtensionId(id) && !excludeList.includes(id.toLowerCase()))
             .map((id) => ({
                 id,
                 displayName: remoteDisplayNames[id] || this.displayNameFromExtensionId(id),
             }));
-        const remoteSet = new Set(safeRemoteList.map((entry) => entry.id));
+        const remoteSet = new Set(safeRemoteList.map((entry) => entry.id.toLowerCase()));
 
         return {
-            toInstall: safeRemoteList.filter((entry) => !localSet.has(entry.id)),
-            toDelete: localList.filter((entry) => !remoteSet.has(entry.id)),
+            toInstall: safeRemoteList.filter((entry) => !localSet.has(entry.id.toLowerCase())),
+            toDelete: localList.filter((entry) => {
+                const lowerId = entry.id.toLowerCase();
+                return !remoteSet.has(lowerId) && lowerId !== selfExtensionId && !excludeList.includes(lowerId);
+            }),
         };
     }
 
@@ -885,16 +960,11 @@ export default class SyncController {
 
     /** Nome legível para perfis antigos que ainda não contêm metadados públicos. */
     private displayNameFromExtensionId(id: string): string {
-        const extensionName = id.split(".")[1] || id;
-        return extensionName
-            .split(/[-_]+/)
-            .filter(Boolean)
-            .map((part) => part.length <= 4 ? part.toUpperCase() : `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
-            .join(" ");
+        return displayNameFromExtensionId(id);
     }
 
     /** Valida o formato publisher.name antes de acionar comandos de extensão. */
     private isValidExtensionId(id: string): boolean {
-        return /^[a-z0-9][a-z0-9-]*\.[a-z0-9][a-z0-9-]*$/i.test(id);
+        return isValidExtensionId(id);
     }
 }
