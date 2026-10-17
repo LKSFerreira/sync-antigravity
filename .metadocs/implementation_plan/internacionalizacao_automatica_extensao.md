@@ -2,13 +2,13 @@
 
 ## Estado do documento
 
-- **Situação:** aprovado, implementação autorizada.
+- **Situação:** implementação concluída; validação automatizada concluída e matriz manual parcialmente validada pelo mantenedor.
 - **Data de elaboração:** 16 de outubro de 2026.
 - **Última revisão arquitetural:** 16 de outubro de 2026.
 - **Escopo:** extensão Sync Antigravity executada no Antigravity IDE.
 - **Idiomas iniciais:** inglês e português do Brasil.
 - **Idioma padrão:** inglês.
-- **Mudanças funcionais nesta etapa:** nenhuma. Este arquivo descreve a implementação futura.
+- **Mudanças funcionais nesta etapa:** localização automática do manifesto, Extension Host, webview, OAuth e mensagens de domínio conforme o idioma da IDE.
 
 ## 1. Resumo executivo
 
@@ -65,7 +65,7 @@ O objetivo deste plano é criar uma fronteira de localização única, previsív
 
 ### 3.1 Manifesto
 
-O arquivo **package.json** está na versão 0.7.19 e contém diretamente em pt-BR:
+Antes da implementação, o arquivo **package.json** estava na versão 0.7.19 e continha diretamente em pt-BR:
 
 - descrição pública;
 - títulos dos comandos;
@@ -431,8 +431,10 @@ A implementação não removerá nem substituirá:
 sync-antigravity/
 ├── l10n/
 │   ├── bundle.l10n.json
+│   ├── bundle.l10n.pt.json
 │   └── bundle.l10n.pt-br.json
 ├── package.nls.json
+├── package.nls.pt.json
 ├── package.nls.pt-br.json
 ├── src/
 │   ├── localizacao/
@@ -476,6 +478,8 @@ Catálogo pt-BR com exatamente as mesmas chaves de **package.nls.json**.
 
 Diferenças de chave, valores vazios ou placeholders incompatíveis deverão falhar nos testes.
 
+O arquivo **package.nls.pt.json** será um alias gerado a partir desse catálogo canônico para atender português genérico e permitir o fallback por idioma primário das demais variantes. O script **npm run l10n:sync-pt** fará a sincronização, e **npm run l10n:check** bloqueará qualquer divergência entre os dois arquivos.
+
 ### 8.3 l10n/bundle.l10n.json
 
 Bundle-base gerado a partir dos usos literais de **vscode.l10n.t**.
@@ -492,6 +496,8 @@ Ele será versionado para:
 Traduções brasileiras das mensagens de tempo de execução.
 
 Não conterá lógica, HTML ou dados dinâmicos. Parâmetros deverão preservar exatamente os nomes declarados no texto-base.
+
+O arquivo **l10n/bundle.l10n.pt.json** será o alias genérico produzido a partir do bundle pt-BR canônico. Essa duplicação existe somente no artefato de localização exigido pela resolução de locale; código, componentes e regras de negócio continuarão únicos.
 
 ### 8.5 src/localizacao/catalogo.ts
 
@@ -840,10 +846,11 @@ Critério de saída:
 3. substituir valores estáticos por placeholders;
 4. adicionar **@vscode/l10n-dev** somente como dependência de desenvolvimento, com versão exata;
 5. gerar o bundle-base;
-6. criar o bundle pt-BR;
-7. criar o script dedicado **npm run l10n:check** para extração e consistência dos catálogos;
-8. manter **npm test** independente do Extension Host;
-9. confirmar que o marketplace continua exibindo o texto inglês padrão.
+6. criar os catálogos pt-BR canônicos;
+7. criar **npm run l10n:sync-pt** para gerar os aliases genéricos `pt`;
+8. criar o script dedicado **npm run l10n:check** para extração, consistência e igualdade dos aliases;
+9. manter **npm test** independente do Extension Host;
+10. confirmar que o marketplace continua exibindo o texto inglês padrão.
 
 Critério de saída:
 
@@ -855,7 +862,7 @@ Critério de saída:
 
 1. implementar normalização pura;
 2. implementar contexto de idioma imutável;
-3. mapear qualquer subtítulo primário `pt` para pt-BR;
+3. mapear qualquer subtag primária `pt` para pt-BR;
 4. criar o catálogo adaptador do Extension Host com chamadas diretas a **vscode.l10n.t**;
 5. documentar e aplicar `comment` somente nas colisões contextuais;
 6. garantir que testes Node não importem o adaptador que depende de **vscode**;
@@ -962,7 +969,7 @@ Critério de saída:
 4. executar **npm run l10n:check** no CI, no workflow de release e no preflight de empacotamento;
 5. manter **npm test** focado nas regras puras e sem carregamento do módulo **vscode**;
 6. atualizar listas explícitas do comando de testes;
-7. preservar cobertura mínima de 80%;
+7. elevar a cobertura mínima global para 95% em linhas, statements e funções e 90% em branches;
 8. validar TypeScript strict;
 9. gerar pacote de produção;
 10. inspecionar o VSIX;
@@ -1176,6 +1183,7 @@ Os testes deverão verificar:
 
 - mesmas chaves em package.nls inglês e pt-BR;
 - mesmas chaves no bundle-base e bundle pt-BR;
+- igualdade integral entre cada catálogo pt-BR canônico e seu alias genérico pt;
 - ausência de valores vazios;
 - ausência de chaves extras não reconhecidas;
 - igualdade do conjunto de parâmetros;
@@ -1240,12 +1248,12 @@ Os novos módulos puros entrarão no relatório do c8.
 
 O adaptador **src/localizacao/catalogo.ts** não será artificialmente importado pelo Node somente para aumentar cobertura. Sua validação ocorrerá por TypeScript strict, **npm run l10n:check** e testes reais no Extension Development Host.
 
-O comando **npm test** deverá continuar exigindo:
+O comando **npm test** passou a exigir:
 
-- linhas: 80%;
-- funções: 80%;
-- branches: 80%;
-- statements: 80%.
+- linhas: 95%;
+- funções: 95%;
+- branches: 90%;
+- statements: 95%.
 
 Não será reduzido nenhum limite para acomodar a funcionalidade.
 
@@ -1324,8 +1332,10 @@ npm run package:vsix
 O VSIX deverá conter:
 
 - extension/package.nls.json;
+- extension/package.nls.pt.json;
 - extension/package.nls.pt-br.json;
 - extension/l10n/bundle.l10n.json;
+- extension/l10n/bundle.l10n.pt.json;
 - extension/l10n/bundle.l10n.pt-br.json;
 - extension/dist/extension.js;
 - extension/dist/webview/dashboard.js;
@@ -1352,7 +1362,7 @@ O workflow **.github/workflows/release.yml** deverá:
 4. gerar bundle;
 5. gerar VSIX;
 6. listar conteúdo;
-7. confirmar os quatro arquivos de localização;
+7. confirmar os seis arquivos de localização;
 8. manter as validações de segurança atuais;
 9. publicar pelo mesmo fluxo OIDC.
 
@@ -1443,6 +1453,7 @@ Esse fallback é uma última proteção, não uma forma aceita de publicar tradu
 | --- | --- | --- |
 | Antigravity não carregar vscode.l10n corretamente | pt-BR não aparece | prova de compatibilidade antes da migração |
 | package.nls não ser resolvido pelo fork | comandos permanecem no padrão | validar no Extension Development Host e VSIX |
+| variante de português não resolver diretamente `pt-br` | interface cai para inglês | distribuir aliases genéricos `pt`, validar igualdade e testar no Antigravity |
 | texto fixo permanecer em dashboard.js | tela parcialmente traduzida | inventário, busca residual e teste manual |
 | parâmetro desaparecer numa tradução | mensagem incorreta | comparação automatizada de placeholders |
 | tradução inserir HTML | risco de injeção ou quebra visual | catálogo somente texto e escape por contexto |
@@ -1507,6 +1518,8 @@ Depois desta arquitetura, adicionar um idioma deverá exigir:
 6. executar testes;
 7. executar matriz manual;
 8. atualizar documentação e changelogs.
+
+Quando várias variantes compartilharem a mesma tradução, uma delas será definida como canônica e os aliases serão gerados e verificados por automação, sem bifurcar o código da extensão.
 
 Não será necessário:
 
