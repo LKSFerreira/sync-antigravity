@@ -1,0 +1,7 @@
+{
+    "extensao.nome": "Sync Antigravity",
+    "extensao.descricao": "Sincronize configurações, extensões, atalhos, snippets e layout do Antigravity entre dispositivos usando o Google Drive",
+    "comando.abrirPainel.titulo": "Abrir painel",
+    "comando.reverterLayout.titulo": "Reverter último layout",
+    "configuracao.extensoesExcluidas.descricao": "IDs de extensões a excluir da sincronização"
+}

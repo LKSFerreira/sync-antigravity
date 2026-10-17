@@ -4,6 +4,9 @@
 (function () {
     // @ts-ignore
     const vscode = acquireVsCodeApi();
+    const localizacao = globalThis.__SYNC_ANTIGRAVITY_L10N__;
+    const { t, tp, comparador, formatadorDecimal } = globalThis.SyncAntigravityLocalizacao
+        .criarLocalizador(localizacao);
 
     // === Elementos do DOM ===
     const loginSection = document.getElementById("login-section");
@@ -23,7 +26,7 @@
 
     // === Estado ===
     let currentState = null;
-    let syncItemsConfig = [];  // Vem de DEFAULT_SYNC_ITEMS no backend
+    let syncItemsConfig = [];
 
     // ========================================
     // SISTEMA DE MODAIS
@@ -43,15 +46,15 @@
                 <div class="modal">
                     <div class="modal-header modal-header-${variant}">
                         <span class="codicon codicon-${opts.icon || "question"}"></span>
-                        <span>${escapeHtml(opts.title || "Confirmar")}</span>
+                        <span>${escapeHtml(opts.title || t("comum.confirmar"))}</span>
                     </div>
-                    <div class="modal-body" style="white-space: pre-wrap;">${escapeHtml(opts.message || "Tem certeza?")}</div>
+                    <div class="modal-body" style="white-space: pre-wrap;">${escapeHtml(opts.message || t("comum.temCerteza"))}</div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" data-modal="cancel">
-                            ${escapeHtml(opts.cancelLabel || "Cancelar")}
+                            ${escapeHtml(opts.cancelLabel || t("comum.cancelar"))}
                         </button>
                         <button class="btn ${variant === "danger" ? "btn-danger" : "btn-accent"}" data-modal="confirm">
-                            ${escapeHtml(opts.confirmLabel || "Confirmar")}
+                            ${escapeHtml(opts.confirmLabel || t("comum.confirmar"))}
                         </button>
                     </div>
                 </div>
@@ -89,7 +92,7 @@
                 <div class="modal">
                     <div class="modal-header modal-header-accent">
                         <span class="codicon codicon-${opts.icon || "edit"}"></span>
-                        <span>${escapeHtml(opts.title || "Entrada")}</span>
+                        <span>${escapeHtml(opts.title || t("comum.entrada"))}</span>
                     </div>
                     <div class="modal-body">
                         ${escapeHtml(opts.message || "")}
@@ -99,7 +102,7 @@
                         <div class="modal-input-error" id="modal-input-error"></div>
                         ${hasSyncItems ? `
                         <div class="sync-item-list">
-                            <div class="sync-item-label">Itens de sincronização</div>
+                            <div class="sync-item-label">${escapeHtml(t("formulario.itensSincronizacao"))}</div>
                             ${opts.syncItems.map(item => `
                                 <label class="sync-item">
                                     <input type="checkbox" value="${escapeAttr(item.key)}" ${item.enabled !== false ? 'checked' : ''} />
@@ -111,10 +114,10 @@
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" data-modal="cancel">
-                            ${escapeHtml(opts.cancelLabel || "Cancelar")}
+                            ${escapeHtml(opts.cancelLabel || t("comum.cancelar"))}
                         </button>
                         <button class="btn btn-accent" data-modal="confirm">
-                            ${escapeHtml(opts.confirmLabel || "Criar")}
+                            ${escapeHtml(opts.confirmLabel || t("comum.criar"))}
                         </button>
                     </div>
                 </div>
@@ -152,7 +155,7 @@
                             errEl.className = 'sync-item-error';
                             listEl.appendChild(errEl);
                         }
-                        errEl.textContent = 'Please select at least one item';
+                        errEl.textContent = t("formulario.selecioneUmItem");
                         return;
                     }
                     close({ value: input.value.trim(), syncKeys: checkedKeys });
@@ -189,12 +192,12 @@
                 <div class="modal">
                     <div class="modal-header modal-header-${variant}">
                         <span class="codicon codicon-${opts.icon || "sync"}"></span>
-                        <span>${escapeHtml(opts.title || "Sincronizar")}</span>
+                        <span>${escapeHtml(opts.title || t("comum.sincronizar"))}</span>
                     </div>
                     <div class="modal-body">
                         <p style="margin:0 0 4px">${escapeHtml(opts.message || "")}</p>
                         <div class="sync-item-list">
-                            <div class="sync-item-label">Itens de sincronização</div>
+                            <div class="sync-item-label">${escapeHtml(t("formulario.itensSincronizacao"))}</div>
                             ${(opts.syncItems || []).map(item => `<label class="sync-item">
                                     <input type="checkbox" value="${escapeAttr(item.key)}" ${item.enabled !== false ? 'checked' : ''} />
                                     <span class="codicon codicon-${item.icon}"></span>
@@ -204,10 +207,10 @@
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" data-modal="cancel">
-                            ${escapeHtml(opts.cancelLabel || "Cancelar")}
+                            ${escapeHtml(opts.cancelLabel || t("comum.cancelar"))}
                         </button>
                         <button class="btn ${variant === "danger" ? "btn-danger" : "btn-accent"}" data-modal="confirm">
-                            ${escapeHtml(opts.confirmLabel || "Confirmar")}
+                            ${escapeHtml(opts.confirmLabel || t("comum.confirmar"))}
                         </button>
                     </div>
                 </div>
@@ -229,7 +232,7 @@
                         errEl.className = 'sync-item-error';
                         listEl.appendChild(errEl);
                     }
-                    errEl.textContent = 'Please select at least one item';
+                    errEl.textContent = t("formulario.selecioneUmItem");
                     return;
                 }
                 close(checkedKeys);
@@ -245,6 +248,52 @@
 
             document.body.appendChild(overlay);
         });
+    }
+
+    function rotuloDoItemDeSincronizacao(chave) {
+        return syncItemsConfig.find((item) => item.key === chave)?.label || chave;
+    }
+
+    function formatarBytes(bytes) {
+        if (bytes < 1024) {
+            return `${formatadorDecimal.format(bytes)} B`;
+        }
+        return `${formatadorDecimal.format(bytes / 1024)} KiB`;
+    }
+
+    function formatarDetalheDaPrevia(item) {
+        const detalhe = item?.detalhe;
+        if (!detalhe || typeof detalhe.tipo !== "string") {
+            return t("comum.validado");
+        }
+        switch (detalhe.tipo) {
+            case "ausente":
+                return t("previa.detalheAusente");
+            case "bytes":
+                return t("previa.detalheBytes", { tamanho: formatarBytes(Number(detalhe.bytes) || 0) });
+            case "extensoes":
+                return tp(
+                    "previa.detalheExtensao",
+                    "previa.detalheExtensoes",
+                    Number(detalhe.quantidade) || 0
+                );
+            case "snippets":
+                return tp(
+                    "previa.detalheSnippet",
+                    "previa.detalheSnippets",
+                    Number(detalhe.quantidadeArquivos) || 0,
+                    {
+                    tamanho: formatarBytes(Number(detalhe.totalBytes) || 0),
+                    }
+                );
+            case "layout": {
+                const globais = Number(detalhe.quantidadeGlobal) || 0;
+                const workspaces = Number(detalhe.quantidadeWorkspaces) || 0;
+                return `${tp("previa.detalheLayoutGlobal", "previa.detalheLayoutGlobais", globais)}, ${tp("previa.detalheLayoutWorkspace", "previa.detalheLayoutWorkspaces", workspaces)}`;
+            }
+            default:
+                return t("comum.validado");
+        }
     }
 
     /** Mostra todos os itens validados antes de qualquer restauração local. */
@@ -263,41 +312,41 @@
                 ? `<ul class="profile-preview-items">${items.map((item) => {
                     if (item.key === "extensions" && extensionPreview) {
                         return `
-                            <li class="profile-preview-item-interactive" data-action="toggle-extensions" title="Clique para ver ou ocultar a lista de extensões">
-                                <span><span class="codicon codicon-extensions"></span> ${escapeHtml(item.label || "Extensões")}</span>
+                            <li class="profile-preview-item-interactive" data-action="toggle-extensions" title="${escapeAttr(t("previa.alternarExtensoes"))}">
+                                <span><span class="codicon codicon-extensions"></span> ${escapeHtml(rotuloDoItemDeSincronizacao(item.key))}</span>
                                 <span class="preview-item-action">
-                                    <span>${escapeHtml(item.detail || "Validado")}</span>
+                                    <span>${escapeHtml(formatarDetalheDaPrevia(item))}</span>
                                     <span class="codicon codicon-chevron-right preview-item-chevron"></span>
                                 </span>
                             </li>
                         `;
                     }
-                    return `<li><span>${escapeHtml(item.label || "Item")}</span><span>${escapeHtml(item.detail || "Validado")}</span></li>`;
+                    return `<li><span>${escapeHtml(rotuloDoItemDeSincronizacao(item.key) || t("comum.item"))}</span><span>${escapeHtml(formatarDetalheDaPrevia(item))}</span></li>`;
                 }).join('')}</ul>`
-                : '<p class="layout-preview-muted">Nenhum item disponível para restaurar.</p>';
+                : `<p class="layout-preview-muted">${escapeHtml(t("previa.nenhumItem"))}</p>`;
 
             const workspaceOptions = workspaces.length === 0
-                ? '<p class="layout-preview-muted">Este perfil não contém layout de workspace.</p>'
+                ? `<p class="layout-preview-muted">${escapeHtml(t("previa.nenhumLayoutWorkspace"))}</p>`
                 : workspaces.map((item, index) => `
                     <label class="sync-item layout-workspace-option">
                         <input type="radio" name="layout-workspace" value="${escapeAttr(item.sourceId)}" ${workspaces.length === 1 && index === 0 ? "checked" : ""} />
                         <span class="codicon codicon-folder"></span>
-                        <span>${escapeHtml(item.label)} (${Number(item.entryCount) || 0} itens)</span>
+                        <span>${escapeHtml(item.label)} (${escapeHtml(tp("previa.quantidadeItem", "previa.quantidadeItens", Number(item.entryCount) || 0))})</span>
                     </label>
                 `).join('');
             const globalKeys = Array.isArray(layoutPreview?.globalKeys) && layoutPreview.globalKeys.length > 0
                 ? `<ul class="layout-preview-keys">${layoutPreview.globalKeys.map((key) => `<li><code>${escapeHtml(key)}</code></li>`).join('')}</ul>`
-                : '<p class="layout-preview-muted">Nenhuma chave global foi salva.</p>';
+                : `<p class="layout-preview-muted">${escapeHtml(t("previa.nenhumaChaveGlobal"))}</p>`;
             const workspaceHint = workspaces.length > 1
-                ? '<p class="layout-preview-muted">Escolha qual workspace deve receber o layout neste computador.</p>'
+                ? `<p class="layout-preview-muted">${escapeHtml(t("previa.escolhaWorkspace"))}</p>`
                 : '';
             const layoutSection = layoutPreview ? `
                 <div class="layout-preview-section">
-                    <div class="sync-item-label">Layout global: ${Number(layoutPreview.globalEntryCount) || 0} itens</div>
+                    <div class="sync-item-label">${escapeHtml(tp("previa.layoutGlobalItem", "previa.layoutGlobalItens", Number(layoutPreview.globalEntryCount) || 0))}</div>
                     ${globalKeys}
                 </div>
                 <div class="layout-preview-section">
-                    <div class="sync-item-label">Layout de workspace</div>
+                    <div class="sync-item-label">${escapeHtml(t("previa.layoutWorkspace"))}</div>
                     ${workspaceHint}
                     ${workspaceOptions}
                 </div>
@@ -310,7 +359,7 @@
                         <span class="preview-extension-name" title="${escapeAttr(extension.displayName || extension.id)}">${escapeHtml(extension.displayName || extension.id)}</span>
                         <code class="preview-extension-id">${escapeHtml(extension.id)}</code>
                     </div>
-                    <span class="preview-tag preview-tag-${tagType}">${tagText}</span>
+                    <span class="preview-tag preview-tag-${tagType}">${escapeHtml(tagText)}</span>
                 </li>
             `;
 
@@ -325,7 +374,7 @@
                     allExtensionRows.push({
                         ...extension,
                         tagType: "install",
-                        tagText: "Instalar",
+                        tagText: t("previa.instalar"),
                         priority: 1,
                     });
                 });
@@ -334,7 +383,7 @@
                     allExtensionRows.push({
                         ...extension,
                         tagType: "delete",
-                        tagText: "Remover",
+                        tagText: t("previa.remover"),
                         priority: 2,
                     });
                 });
@@ -345,7 +394,7 @@
                         allExtensionRows.push({
                             ...extension,
                             tagType: "present",
-                            tagText: "Presente",
+                            tagText: t("previa.presente"),
                             priority: 3,
                         });
                     }
@@ -355,33 +404,33 @@
                     if (first.priority !== second.priority) {
                         return first.priority - second.priority;
                     }
-                    return (first.displayName || first.id).localeCompare(second.displayName || second.id, "pt-BR");
+                    return comparador.compare(first.displayName || first.id, second.displayName || second.id);
                 });
 
                 const renderedRows = allExtensionRows.length > 0
                     ? allExtensionRows.map((extension) => renderExtensionRow(extension, extension.tagType, extension.tagText)).join('')
-                    : '<li class="layout-preview-muted" style="padding: 8px;">Nenhuma extensão no perfil.</li>';
+                    : `<li class="layout-preview-muted" style="padding: 8px;">${escapeHtml(t("previa.nenhumaExtensao"))}</li>`;
 
-                let statusBadge = '<span class="preview-tag preview-tag-present">Todas instaladas</span>';
+                let statusBadge = `<span class="preview-tag preview-tag-present">${escapeHtml(t("previa.todasInstaladas"))}</span>`;
                 if (toInstall.length > 0 || toDelete.length > 0) {
                     const badgeParts = [];
                     if (toInstall.length > 0) {
-                        badgeParts.push(`<span class="preview-tag preview-tag-install">${toInstall.length} para instalar</span>`);
+                        badgeParts.push(`<span class="preview-tag preview-tag-install">${escapeHtml(t("previa.paraInstalar", { quantidade: toInstall.length }))}</span>`);
                     }
                     if (toDelete.length > 0) {
-                        badgeParts.push(`<span class="preview-tag preview-tag-delete">${toDelete.length} para remover</span>`);
+                        badgeParts.push(`<span class="preview-tag preview-tag-delete">${escapeHtml(t("previa.paraRemover", { quantidade: toDelete.length }))}</span>`);
                     }
                     statusBadge = badgeParts.join(' ');
                 }
 
                 extensionSection = `
                     <div class="layout-preview-section" id="preview-extensions-section">
-                        <div class="sync-item-label">Extensões (${totalExtensions})</div>
+                        <div class="sync-item-label">${escapeHtml(t("previa.extensoesQuantidade", { quantidade: totalExtensions }))}</div>
                         <details class="preview-accordion" id="preview-extensions-accordion" open>
                             <summary class="preview-accordion-summary">
                                 <div class="preview-summary-left">
                                     <span class="codicon codicon-extensions"></span>
-                                    <span>Lista de extensões</span>
+                                    <span>${escapeHtml(t("previa.listaExtensoes"))}</span>
                                 </div>
                                 <div class="preview-summary-right" style="display: flex; align-items: center; gap: 6px;">
                                     ${statusBadge}
@@ -391,7 +440,7 @@
                                 <ul class="profile-preview-extension-scroll">${renderedRows}</ul>
                             </div>
                         </details>
-                        <p class="layout-preview-muted" style="margin-top: 8px;">As extensões só serão alteradas após uma confirmação adicional.</p>
+                        <p class="layout-preview-muted" style="margin-top: 8px;">${escapeHtml(t("previa.confirmacaoExtensoes"))}</p>
                     </div>
                 `;
             }
@@ -402,20 +451,20 @@
                 <div class="modal layout-preview-modal">
                     <div class="modal-header modal-header-accent">
                         <span class="codicon codicon-eye"></span>
-                        <span>Prévia da restauração</span>
+                        <span>${escapeHtml(t("previa.titulo"))}</span>
                     </div>
                     <div class="modal-body">
-                        <p>O perfil <strong>${escapeHtml(profileName)}</strong> só será aplicado após esta confirmação. Configurações, atalhos e snippets receberão um backup local antes da alteração.</p>
+                        <p>${escapeHtml(t("previa.descricao", { nome: profileName }))}</p>
                         <div class="layout-preview-section">
-                            <div class="sync-item-label">Itens que serão restaurados</div>
+                            <div class="sync-item-label">${escapeHtml(t("previa.itensRestaurados"))}</div>
                             ${itemList}
                         </div>
                         ${layoutSection}
                         ${extensionSection}
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-secondary" data-modal="cancel">Cancelar</button>
-                        <button class="btn btn-accent" data-modal="confirm">Aplicar perfil</button>
+                        <button class="btn btn-secondary" data-modal="cancel">${escapeHtml(t("comum.cancelar"))}</button>
+                        <button class="btn btn-accent" data-modal="confirm">${escapeHtml(t("previa.aplicarPerfil"))}</button>
                     </div>
                 </div>
             `;
@@ -439,7 +488,7 @@
             overlay.querySelector("[data-modal='confirm']").addEventListener("click", () => {
                 const selected = overlay.querySelector("input[name='layout-workspace']:checked");
                 if (layoutPreview && workspaces.length > 1 && !selected) {
-                    showToast("error", "Selecione o layout de workspace que será restaurado");
+                    showToast("error", t("previa.selecioneWorkspace"));
                     return;
                 }
                 close({ workspaceLayoutId: selected?.value });
@@ -468,7 +517,7 @@
                 <span class="codicon codicon-${icon}"></span>
                 <span>${escapeHtml(message)}</span>
             </div>
-            <button class="toast-close" title="Dispensar">
+            <button class="toast-close" title="${escapeAttr(t("comum.dispensar"))}" aria-label="${escapeAttr(t("comum.dispensar"))}">
                 <span class="codicon codicon-close"></span>
             </button>
             <div class="toast-progress" style="animation-duration: ${duration}ms;"></div>
@@ -502,10 +551,10 @@
 
     btnLogout.addEventListener("click", async () => {
         const confirmed = await showConfirm({
-            title: "Encerrar sessão",
-            message: "Tem certeza de que deseja encerrar a sessão do Google?",
+            title: t("pagina.encerrarSessao"),
+            message: t("autenticacao.confirmarSaida"),
             icon: "sign-out",
-            confirmLabel: "Encerrar sessão",
+            confirmLabel: t("pagina.encerrarSessao"),
             variant: "danger",
         });
         if (confirmed) {
@@ -515,15 +564,15 @@
 
     btnCreateProfile.addEventListener("click", async () => {
         const result = await showInput({
-            title: "Criar perfil",
-            message: "Informe um nome para o novo perfil de sincronização.",
+            title: t("pagina.criarPerfil"),
+            message: t("formulario.informarNomePerfil"),
             icon: "add",
-            placeholder: "ex.: trabalho, casa, notebook",
-            confirmLabel: "Criar",
+            placeholder: t("formulario.exemploNomePerfil"),
+            confirmLabel: t("comum.criar"),
             syncItems: syncItemsConfig,
             validate: (val) => {
-                if (!val) return "O nome do perfil é obrigatório";
-                if (!/^[a-zA-Z0-9_-]+$/.test(val)) return "Use apenas letras, números, hífens e sublinhados";
+                if (!val) return t("formulario.nomeObrigatorio");
+                if (!/^[a-zA-Z0-9_-]+$/.test(val)) return t("formulario.nomeCaracteres");
                 return null;
             },
         });
@@ -559,11 +608,11 @@
                     ? syncItemsConfig.filter(i => metaKeys.includes(i.key))
                     : syncItemsConfig;
                 const syncKeys = await showSyncSelect({
-                    title: "Aplicar perfil",
-                    message: `Aplicar "${profileName}" nesta instalação do Antigravity?`,
+                    title: t("perfil.aplicarTitulo"),
+                    message: t("perfil.aplicarPergunta", { nome: profileName }),
                     icon: "cloud-download",
                     syncItems: items,
-                    confirmLabel: "Aplicar",
+                    confirmLabel: t("comum.aplicar"),
                 });
                 if (syncKeys) {
                     vscode.postMessage({ command: "pullProfile", fileName, syncKeys });
@@ -579,11 +628,11 @@
                     enabled: metaKeys ? metaKeys.includes(i.key) : i.enabled,
                 }));
                 const syncKeys = await showSyncSelect({
-                    title: "Atualizar perfil",
-                    message: `Atualizar "${profileName}" com as configurações atuais?`,
+                    title: t("perfil.atualizarTitulo"),
+                    message: t("perfil.atualizarPergunta", { nome: profileName }),
                     icon: "cloud-upload",
                     syncItems: items,
-                    confirmLabel: "Atualizar",
+                    confirmLabel: t("comum.atualizar"),
                 });
                 if (syncKeys) {
                     vscode.postMessage({ command: "updateProfile", fileName, syncKeys });
@@ -592,10 +641,10 @@
             }
             case "delete": {
                 const confirmed = await showConfirm({
-                    title: "Excluir perfil",
-                    message: `Isso excluirá permanentemente "${profileName}" do Google Drive. Esta ação não pode ser desfeita.`,
+                    title: t("perfil.excluirTitulo"),
+                    message: t("perfil.excluirPergunta", { nome: profileName }),
                     icon: "trash",
-                    confirmLabel: "Excluir",
+                    confirmLabel: t("comum.excluir"),
                     variant: "danger",
                 });
                 if (confirmed) {
@@ -639,7 +688,7 @@
         if (!loadingEl) {
             loadingEl = document.createElement("div");
             loadingEl.className = "appdata-loading profiles-loading";
-            loadingEl.innerHTML = `<span class="spinner"></span><span>Carregando arquivos...</span>`;
+            loadingEl.innerHTML = `<span class="spinner"></span><span>${escapeHtml(t("explorador.carregandoArquivos"))}</span>`;
             appdataTableWrapper.parentNode.insertBefore(loadingEl, appdataTableWrapper);
         }
         loadingEl.style.display = "";
@@ -678,7 +727,7 @@
             folderStack = [];
             btnBackAppdata.style.display = "none";
             pageTokenStack = []; currentPageToken = null; nextPageToken = null; currentPage = 1;
-            fetchAppDataFiles(null, "Raiz", null);
+            fetchAppDataFiles(null, t("pagina.raiz"), null);
         } else {
             const target = folderStack[index];
             if (!target) return;
@@ -691,22 +740,22 @@
     }
 
     function getCurrentFolderName() {
-        if (!currentFolderId) return "Raiz";
+        if (!currentFolderId) return t("pagina.raiz");
         if (folderStack.length > 0) {
             const last = folderStack[folderStack.length - 1];
             // The current name is actually what we navigated into
-            return "Pasta";
+            return t("explorador.pasta");
         }
-        return "Raiz";
+        return t("pagina.raiz");
     }
 
     // Render breadcrumb
     function renderBreadcrumb(currentName) {
-        let html = `<span class="breadcrumb-item" data-bc-index="0">Raiz</span>`;
+        let html = `<span class="breadcrumb-item" data-bc-index="0">${escapeHtml(t("pagina.raiz"))}</span>`;
         folderStack.forEach((f, i) => {
             if (f.id !== null) {
                 html += `<span class="breadcrumb-sep codicon codicon-chevron-right"></span>`;
-                html += `<span class="breadcrumb-item" data-bc-index="${i + 1}">${escapeHtml(f.name || "Pasta")}</span>`;
+                html += `<span class="breadcrumb-item" data-bc-index="${i + 1}">${escapeHtml(f.name || t("explorador.pasta"))}</span>`;
             }
         });
         if (currentFolderId) {
@@ -715,11 +764,11 @@
         } else {
             // Root is active
             const rootSpan = html.split("data-bc-index=\"0\">")[0];
-            html = `<span class="breadcrumb-item active" data-bc-index="0">Raiz</span>`;
+            html = `<span class="breadcrumb-item active" data-bc-index="0">${escapeHtml(t("pagina.raiz"))}</span>`;
             folderStack.forEach((f, i) => {
                 if (f.id !== null) {
                     html += `<span class="breadcrumb-sep codicon codicon-chevron-right"></span>`;
-                    html += `<span class="breadcrumb-item" data-bc-index="${i + 1}">${escapeHtml(f.name || "Pasta")}</span>`;
+                    html += `<span class="breadcrumb-item" data-bc-index="${i + 1}">${escapeHtml(f.name || t("explorador.pasta"))}</span>`;
                 }
             });
         }
@@ -736,11 +785,11 @@
 
     // MimeType → human-readable label
     function mimeLabel(mime) {
-        if (mime === "application/vnd.google-apps.folder") return "Pasta";
+        if (mime === "application/vnd.google-apps.folder") return t("explorador.pasta");
         if (mime === "application/json" || (mime && mime.includes("json"))) return "JSON";
-        if (mime && mime.startsWith("text/")) return "Texto";
-        if (mime && mime.startsWith("image/")) return "Imagem";
-        return "Arquivo";
+        if (mime && mime.startsWith("text/")) return t("explorador.texto");
+        if (mime && mime.startsWith("image/")) return t("explorador.imagem");
+        return t("explorador.arquivo");
     }
 
     // MimeType → badge class
@@ -803,7 +852,7 @@
             const aFolder = a.mimeType === "application/vnd.google-apps.folder" ? 0 : 1;
             const bFolder = b.mimeType === "application/vnd.google-apps.folder" ? 0 : 1;
             if (aFolder !== bFolder) return aFolder - bFolder;
-            return a.name.localeCompare(b.name);
+            return comparador.compare(a.name, b.name);
         });
 
         appdataList.innerHTML = sorted.map((f) => {
@@ -820,12 +869,12 @@
                         <span class="codicon codicon-${icon}"></span>
                         ${escapeHtml(f.name)}
                     </td>
-                    <td><span class="type-badge ${badgeClass}">${label}</span></td>
+                    <td><span class="type-badge ${badgeClass}">${escapeHtml(label)}</span></td>
                     <td class="appdata-size">${isFolder ? "-" : formatSize(f.size)}</td>
                     <td class="appdata-date">${modified}</td>
                     <td class="appdata-actions">
                         ${!isFolder && isPreviewable(f.mimeType) ? `
-                            <button class="btn-icon" data-preview-id="${escapeAttr(f.id)}" data-preview-name="${escapeAttr(f.name)}" title="Visualizar">
+                            <button class="btn-icon" data-preview-id="${escapeAttr(f.id)}" data-preview-name="${escapeAttr(f.name)}" title="${escapeAttr(t("explorador.visualizar"))}" aria-label="${escapeAttr(t("explorador.visualizar"))}">
                                 <span class="codicon codicon-eye"></span>
                             </button>
                         ` : ""}
@@ -862,7 +911,7 @@
                     <pre class="file-preview-content"><code>${escapeHtml(formatted)}</code></pre>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" data-modal="cancel">Fechar</button>
+                    <button class="btn btn-secondary" data-modal="cancel">${escapeHtml(t("comum.fechar"))}</button>
                 </div>
             </div>
         `;
@@ -898,11 +947,11 @@
 
         paginationBar.innerHTML = `
             <button class="btn btn-secondary btn-sm" id="btn-page-prev" ${!hasPrev ? "disabled" : ""}>
-                <span class="codicon codicon-chevron-left"></span> Anterior
+                <span class="codicon codicon-chevron-left"></span> ${escapeHtml(t("comum.anterior"))}
             </button>
-            <span class="page-indicator">Página ${currentPage}</span>
+            <span class="page-indicator">${escapeHtml(t("explorador.pagina", { pagina: currentPage }))}</span>
             <button class="btn btn-secondary btn-sm" id="btn-page-next" ${!nextPageToken ? "disabled" : ""}>
-                Próxima <span class="codicon codicon-chevron-right"></span>
+                ${escapeHtml(t("comum.proxima"))} <span class="codicon codicon-chevron-right"></span>
             </button>
         `;
 
@@ -994,7 +1043,7 @@
                 <div class="sync-progress-bar-container">
                     <div class="sync-progress-bar" id="sync-progress-bar"></div>
                 </div>
-                <div class="sync-progress-text" id="sync-progress-text">Preparando...</div>
+                <div class="sync-progress-text" id="sync-progress-text">${escapeHtml(t("progresso.preparando"))}</div>
             </div>
         `;
         document.body.appendChild(overlay);
@@ -1049,7 +1098,7 @@
         if (bar) { bar.style.width = `${pct}%`; }
 
         const text = syncModal.querySelector("#sync-progress-text");
-        if (text) { text.textContent = `${done} / ${total} concluídos`; }
+        if (text) { text.textContent = t("progresso.concluidos", { concluidos: done, total }); }
     }
 
     /** Mark sync as complete - show done state */
@@ -1109,22 +1158,22 @@
             case "askExtensionSync": {
                 const installEntries = (msg.toInstall || []);
                 const deleteEntries = (msg.toDelete || []);
-                const extensionLabel = (extension) => extension.displayName || "Extensão sem nome";
+                const extensionLabel = (extension) => extension.displayName || t("extensoes.semNome");
                 const installList = installEntries.map((extension) => extension.id);
                 const deleteList = deleteEntries.map((extension) => extension.id);
-                let details = `A sincronização instalará ${installList.length} e removerá ${deleteList.length} extensões.\n\n`;
+                let details = `${t("extensoes.resumo", { instalar: installList.length, remover: deleteList.length })}\n\n`;
                 if (installList.length > 0) {
-                    details += `📥 Instalar:\n${installEntries.map((extension) => `  • ${extensionLabel(extension)}`).join("\n")}\n\n`;
+                    details += `📥 ${t("extensoes.instalarLista")}\n${installEntries.map((extension) => `  • ${extensionLabel(extension)}`).join("\n")}\n\n`;
                 }
                 if (deleteList.length > 0) {
-                    details += `🗑️ Remover:\n${deleteEntries.map((extension) => `  • ${extensionLabel(extension)}`).join("\n")}`;
+                    details += `🗑️ ${t("extensoes.removerLista")}\n${deleteEntries.map((extension) => `  • ${extensionLabel(extension)}`).join("\n")}`;
                 }
                 showConfirm({
-                    title: "Sincronização de extensões",
+                    title: t("extensoes.titulo"),
                     message: details,
                     icon: "extensions",
-                    confirmLabel: "Aplicar",
-                    cancelLabel: "Pular",
+                    confirmLabel: t("comum.aplicar"),
+                    cancelLabel: t("extensoes.pular"),
                     variant: "accent",
                 }).then((confirmed) => {
                     if (confirmed) {
@@ -1145,13 +1194,13 @@
             }
             case "askRestart":
                 showConfirm({
-                    title: "Reinicialização necessária",
+                    title: t("reinicializacao.titulo"),
                     message: msg.layoutWillApplyAfterExit
-                        ? "Perfil aplicado. Reinicie o Antigravity agora para concluir a aplicação do layout, das configurações e das extensões. Salve seu trabalho antes de continuar."
-                        : "Perfil aplicado. Reinicie o Antigravity agora para carregar todas as alterações.",
+                        ? t("reinicializacao.comLayout")
+                        : t("reinicializacao.semLayout"),
                     icon: "refresh",
-                    confirmLabel: "Reiniciar agora",
-                    cancelLabel: "Mais tarde",
+                    confirmLabel: t("reinicializacao.agora"),
+                    cancelLabel: t("comum.maisTarde"),
                     variant: "accent",
                 }).then((confirmed) => {
                     if (confirmed) {
@@ -1160,7 +1209,7 @@
                 });
                 break;
             case "appDataFiles":
-                renderAppDataFiles(msg.files || [], msg.folderName || "Raiz", msg.nextPageToken);
+                renderAppDataFiles(msg.files || [], msg.folderName || t("pagina.raiz"), msg.nextPageToken);
                 break;
             case "filePreview":
                 showFilePreview(msg.fileName, msg.content);
@@ -1216,7 +1265,7 @@
             : `<span class="codicon codicon-account"></span>`;
         headerUser.innerHTML = `
             ${avatarHtml}
-            <span>Conta Google conectada</span>
+            <span>${escapeHtml(t("autenticacao.contaConectada"))}</span>
         `;
 
         // Account info with avatar
@@ -1227,7 +1276,7 @@
                 : `<span class="status-dot status-online"></span>`;
             accountCard.innerHTML = `
                 ${acctAvatar}
-                <span class="account-email">Conta Google conectada</span>
+                <span class="account-email">${escapeHtml(t("autenticacao.contaConectada"))}</span>
             `;
         }
 
@@ -1238,7 +1287,7 @@
             profilesList.innerHTML = `
                 <div class="profiles-loading">
                     <span class="spinner"></span>
-                    <span>Carregando perfis...</span>
+                    <span>${escapeHtml(t("perfil.carregando"))}</span>
                 </div>
             `;
             profilesEmpty.style.display = "none";
@@ -1267,7 +1316,7 @@
 
         profilesList.innerHTML = profiles
             .map((p) => {
-                const modified = p.modifiedTime ? formatDate(p.modifiedTime) : "Desconhecido";
+                const modified = p.modifiedTime ? formatDate(p.modifiedTime) : t("comum.desconhecido");
                 return `
                 <div class="profile-card">
                     <div class="profile-name">
@@ -1281,19 +1330,19 @@
                     <div class="profile-actions">
                         <button class="btn btn-accent btn-sm"
                                 data-action="pull" data-file="${escapeAttr(p.fileName)}"
-                                title="Aplicar este perfil nesta instalação do Antigravity">
+                                title="${escapeAttr(t("perfil.aplicarDescricao"))}">
                             <span class="codicon codicon-cloud-download"></span>
-                            Aplicar
+                            ${escapeHtml(t("comum.aplicar"))}
                         </button>
                         <button class="btn btn-secondary btn-sm"
                                 data-action="push" data-file="${escapeAttr(p.fileName)}"
-                                title="Atualizar este perfil com a configuração atual">
+                                title="${escapeAttr(t("perfil.atualizarDescricao"))}">
                             <span class="codicon codicon-cloud-upload"></span>
-                            Atualizar
+                            ${escapeHtml(t("comum.atualizar"))}
                         </button>
                         <button class="btn btn-danger btn-sm"
                                 data-action="delete" data-file="${escapeAttr(p.fileName)}"
-                                title="Excluir perfil">
+                                title="${escapeAttr(t("perfil.excluirDescricao"))}" aria-label="${escapeAttr(t("perfil.excluirDescricao"))}">
                             <span class="codicon codicon-trash"></span>
                         </button>
                     </div>
@@ -1323,9 +1372,9 @@
         if (action === "login") {
             btnLogin.disabled = loading;
             if (loading) {
-                btnLogin.innerHTML = '<span class="spinner"></span> Iniciando sessão...';
+                btnLogin.innerHTML = `<span class="spinner"></span> ${escapeHtml(t("autenticacao.iniciandoSessao"))}`;
             } else {
-                btnLogin.innerHTML = '<span class="codicon codicon-sign-in"></span> Iniciar sessão com o Google';
+                btnLogin.innerHTML = `<span class="codicon codicon-sign-in"></span> ${escapeHtml(t("pagina.iniciarSessaoGoogle"))}`;
             }
         }
 
@@ -1351,7 +1400,7 @@
     function formatDate(isoString) {
         try {
             const d = new Date(isoString);
-            return d.toLocaleDateString("pt-BR", {
+            return d.toLocaleDateString(localizacao.localidade, {
                 day: "2-digit",
                 month: "short",
                 year: "numeric",

@@ -1,5 +1,7 @@
 /** Contrato validado para sincronização portátil do layout da IDE. */
 
+import { ErroDaExtensao } from "../core/erro-da-extensao";
+
 export interface ILayoutEntry {
     key: string;
     value: string;
@@ -96,7 +98,9 @@ export function validateLayoutEntries(
     isAllowed: (entry: ILayoutEntry) => boolean
 ): ILayoutEntry[] {
     if (!Array.isArray(entries) || entries.length > MAX_ENTRIES) {
-        throw new Error("Quantidade inválida de entradas de layout");
+        throw new ErroDaExtensao("LAYOUT_QUANTIDADE_ENTRADAS_INVALIDA", {
+            limite: MAX_ENTRIES,
+        });
     }
 
     const seenKeys = new Set<string>();
@@ -109,7 +113,7 @@ export function validateLayoutEntries(
             seenKeys.has(entry.key) ||
             Buffer.byteLength(entry.value, "utf8") > MAX_ENTRY_BYTES
         ) {
-            throw new Error("Entrada de layout inválida");
+            throw new ErroDaExtensao("LAYOUT_ENTRADA_INVALIDA");
         }
 
         seenKeys.add(entry.key);
@@ -133,7 +137,7 @@ export function createWorkspaceLayout(
     entries: ILayoutEntry[]
 ): IWorkspaceLayout {
     if (!/^[a-f0-9]{16,128}$/i.test(sourceId) || !label.trim() || label.trim().length > 200) {
-        throw new Error("Identificador ou nome de workspace inválido");
+        throw new ErroDaExtensao("LAYOUT_WORKSPACE_IDENTIFICACAO_INVALIDA");
     }
 
     return {
@@ -156,7 +160,7 @@ function normalizeLayoutDocument(
         typeof document.capturedAt !== "string" ||
         !Number.isFinite(Date.parse(document.capturedAt))
     ) {
-        throw new Error("Documento de layout inválido");
+        throw new ErroDaExtensao("LAYOUT_DOCUMENTO_INVALIDO");
     }
     return {
         schemaVersion: 1,
@@ -175,14 +179,18 @@ function normalizeWorkspaceLayout(layout: IWorkspaceLayout): IWorkspaceLayout {
 /** Normaliza os layouts de workspace e impede duplicidade por armazenamento local. */
 export function normalizeWorkspaceLayouts(layouts: IWorkspaceLayout[]): IWorkspaceLayout[] {
     if (!Array.isArray(layouts) || layouts.length > MAX_WORKSPACE_LAYOUTS) {
-        throw new Error("Quantidade inválida de layouts de workspace");
+        throw new ErroDaExtensao("LAYOUT_QUANTIDADE_WORKSPACES_INVALIDA", {
+            limite: MAX_WORKSPACE_LAYOUTS,
+        });
     }
 
     const sourceIds = new Set<string>();
     return layouts.map((layout) => {
         const normalized = normalizeWorkspaceLayout(layout);
         if (sourceIds.has(normalized.sourceId)) {
-            throw new Error("Layout de workspace duplicado");
+            throw new ErroDaExtensao("LAYOUT_WORKSPACE_DUPLICADO", {
+                workspace: normalized.sourceId,
+            });
         }
         sourceIds.add(normalized.sourceId);
         return normalized;
@@ -197,7 +205,7 @@ export function getWorkspaceLayouts(profile: ILayoutProfile): IWorkspaceLayout[]
         !Number.isFinite(Date.parse(profile.workspaces.capturedAt)) ||
         !Array.isArray(profile.workspaces.layouts)
     )) {
-        throw new Error("Documento de workspaces inválido");
+        throw new ErroDaExtensao("LAYOUT_DOCUMENTO_WORKSPACES_INVALIDO");
     }
     const layouts = profile.workspaces?.layouts ?? (profile.workspace ? [profile.workspace] : []);
     return normalizeWorkspaceLayouts(layouts);
@@ -234,12 +242,12 @@ export function createLayoutProfile(
 /** Normaliza um layout remoto e preserva compatibilidade com o formato de workspace único. */
 export function normalizeLayoutProfile(data: unknown): ILayoutProfile {
     if (!data || typeof data !== "object") {
-        throw new Error("Dados de layout inválidos");
+        throw new ErroDaExtensao("LAYOUT_DADOS_INVALIDOS");
     }
 
     const candidate = data as Partial<ILayoutProfile>;
     if (candidate.schemaVersion !== 1 || !candidate.global) {
-        throw new Error("Versão de layout incompatível");
+        throw new ErroDaExtensao("LAYOUT_VERSAO_INCOMPATIVEL");
     }
     return createLayoutProfile(candidate.global, getWorkspaceLayouts(candidate as ILayoutProfile));
 }

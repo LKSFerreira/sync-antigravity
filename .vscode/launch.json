@@ -2,13 +2,44 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Run Extension",
+            "name": "Executar extensão - inglês",
             "type": "extensionHost",
             "request": "launch",
             "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}"
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--locale=en"
             ],
-            "outFiles": ["${workspaceFolder}/out/**/*.js"]
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+        },
+        {
+            "name": "Executar extensão - pt-BR",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--locale=pt-br"
+            ],
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+        },
+        {
+            "name": "Executar extensão - pt-PT como pt-BR",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--locale=pt-pt"
+            ],
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+        },
+        {
+            "name": "Executar extensão - fallback espanhol",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--locale=es"
+            ],
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"]
         }
     ]
 }

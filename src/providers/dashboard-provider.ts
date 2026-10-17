@@ -4,9 +4,13 @@
 import * as vscode from "vscode";
 import GoogleAuth from "../core/google-auth";
 import GoogleDriveService, { ProgressCallback } from "../core/google-drive";
-import { DEFAULT_SYNC_ITEMS, IProfile, ISyncItem } from "../models/interfaces";
+import { IProfile, ISyncItem } from "../models/interfaces";
 import SyncController from "../core/sync-controller";
 import Logger from "../core/logger";
+import { criarItensDeSincronizacaoPadrao } from "../localizacao/itens-sincronizacao";
+import { catalogo, localizarErro } from "../localizacao/catalogo";
+import { criarLocalizacaoDaWebview } from "../localizacao/textos-webview";
+import { serializarParaScriptInline } from "../localizacao/serializacao-webview";
 
 /** Estado do painel enviado à Webview */
 interface DashboardState {
@@ -39,6 +43,8 @@ interface PendingProfileRestore {
 }
 
 export default class DashboardProvider {
+    private readonly localizacao = criarLocalizacaoDaWebview();
+    private readonly itensDeSincronizacao = criarItensDeSincronizacaoPadrao();
     private panel: vscode.WebviewPanel | undefined;
     private readonly extensionUri: vscode.Uri;
     private readonly auth: GoogleAuth;
@@ -125,7 +131,7 @@ export default class DashboardProvider {
             const isAuthenticated = await this.auth.isAuthenticated();
 
             // Fase 1: envia o estado imediatamente com profiles: null (carregando)
-            const state: DashboardState = { isAuthenticated, profiles: null, syncItems: DEFAULT_SYNC_ITEMS };
+            const state: DashboardState = { isAuthenticated, profiles: null, syncItems: this.itensDeSincronizacao };
             this.panel.webview.postMessage({ type: "state", data: state });
 
             // Fase 2: carrega os perfis e envia a atualização
@@ -141,7 +147,7 @@ export default class DashboardProvider {
                     this.panel?.webview.postMessage({ type: "profiles", data: profiles });
                 } catch (error) {
                     this.logger.error(
-                        "Falha ao carregar a lista de perfis",
+                        catalogo.painel.falhaCarregarPerfis(),
                         "DashboardProvider.refreshState",
                         false,
                         error
@@ -152,7 +158,7 @@ export default class DashboardProvider {
             }
         } catch (error) {
             this.logger.error(
-                "Falha ao atualizar o estado do painel",
+                catalogo.painel.falhaAtualizarEstado(),
                 "DashboardProvider.refreshState",
                 false,
                 error
@@ -183,15 +189,15 @@ export default class DashboardProvider {
                     try {
                         await this.auth.login();
                         await this.onAuthenticationChanged();
-                        sendToast("success", "Sessão iniciada com sucesso!");
+                        sendToast("success", catalogo.painel.sessaoIniciada());
                     } catch (loginErr: any) {
                         this.logger.error(
-                            `Falha ao iniciar sessão: ${loginErr?.message || "erro desconhecido"}`,
+                            catalogo.painel.falhaIniciarSessaoComMotivo(localizarErro(loginErr)),
                             "DashboardProvider.handleMessage",
                             false,
                             loginErr
                         );
-                        sendToast("error", loginErr?.message || "Falha ao iniciar sessão");
+                        sendToast("error", localizarErro(loginErr, catalogo.painel.falhaIniciarSessao()));
                     }
                     await this.refreshState();
                     sendLoading("login", false);
@@ -201,12 +207,12 @@ export default class DashboardProvider {
                     await this.auth.logout();
                     await this.onAuthenticationChanged();
                     await this.refreshState();
-                    sendToast("info", "Sessão encerrada");
+                    sendToast("info", catalogo.painel.sessaoEncerrada());
                     break;
 
                 case "createProfile": {
                     if (!message.name) { return; }
-                    const syncItems = DEFAULT_SYNC_ITEMS.map(item => ({
+                    const syncItems = this.itensDeSincronizacao.map(item => ({
                         ...item,
                         enabled: message.syncKeys ? message.syncKeys.includes(item.key) : item.enabled,
                     }));
@@ -218,23 +224,23 @@ export default class DashboardProvider {
                     this.panel?.webview.postMessage({ type: "syncDone" });
                     await this.refreshState();
                     sendLoading("createProfile", false);
-                    sendToast("success", `Perfil "${message.name}" criado`);
+                    sendToast("success", catalogo.painel.perfilCriado(message.name));
                     break;
                 }
 
                 case "pullProfile": {
                     if (!message.fileName) { return; }
                     const profileName = message.fileName;
-                    const syncItems = DEFAULT_SYNC_ITEMS.map(item => ({
+                    const syncItems = this.itensDeSincronizacao.map(item => ({
                         ...item,
                         enabled: message.syncKeys ? message.syncKeys.includes(item.key) : item.enabled,
                     }));
                     sendLoading(`pull-${profileName}`, true);
-                    this.panel?.webview.postMessage({ type: "syncStart", title: `Preparando "${profileName}"` });
+                    this.panel?.webview.postMessage({ type: "syncStart", title: catalogo.painel.preparandoPerfil(profileName) });
                     const profile = await this.drive.getProfile(profileName, syncItems, sendProgress);
                     if (!profile) {
                         this.panel?.webview.postMessage({ type: "syncDone" });
-                        sendToast("error", "Os dados do perfil estão vazios");
+                        sendToast("error", catalogo.painel.perfilVazio());
                         sendLoading(`pull-${profileName}`, false);
                         return;
                     }
@@ -275,7 +281,7 @@ export default class DashboardProvider {
                     if (!message.restoreId) { return; }
                     const pending = this.pendingProfileRestores.get(message.restoreId);
                     if (!pending) {
-                        throw new Error("A prévia do perfil expirou. Aplique o perfil novamente.");
+                        throw new Error(catalogo.painel.previaExpirada());
                     }
                     this.pendingProfileRestores.delete(message.restoreId);
                     sendLoading(`pull-${pending.profileName}`, true);
@@ -296,7 +302,7 @@ export default class DashboardProvider {
                     if (message.restoreId) {
                         this.pendingProfileRestores.delete(message.restoreId);
                     }
-                    sendToast("info", "Aplicação do perfil cancelada");
+                    sendToast("info", catalogo.painel.aplicacaoCancelada());
                     break;
 
                 case "applyExtensionSync": {
@@ -304,7 +310,7 @@ export default class DashboardProvider {
                     sendLoading("extensionSync", true);
                     const needsReload = await this.controller.applyExtensionSync(toInstall || [], toDelete || []);
                     sendLoading("extensionSync", false);
-                    sendToast("success", "Extensões sincronizadas");
+                    sendToast("success", catalogo.painel.extensoesSincronizadas());
                     if (needsReload || message.layoutWillApplyAfterExit) {
                         this.panel?.webview.postMessage({
                             type: "askRestart",
@@ -317,13 +323,13 @@ export default class DashboardProvider {
                 case "updateProfile": {
                     if (!message.fileName) { return; }
                     const profileName = message.fileName;
-                    const syncItems = DEFAULT_SYNC_ITEMS.map(item => ({
+                    const syncItems = this.itensDeSincronizacao.map(item => ({
                         ...item,
                         enabled: message.syncKeys ? message.syncKeys.includes(item.key) : item.enabled,
                     }));
                     sendLoading(`push-${profileName}`, true);
-                    this.panel?.webview.postMessage({ type: "syncStart", title: `Enviando "${profileName}"` });
-                    const layoutItem = DEFAULT_SYNC_ITEMS.find((item) => item.key === "layout");
+                    this.panel?.webview.postMessage({ type: "syncStart", title: catalogo.painel.enviandoPerfil(profileName) });
+                    const layoutItem = this.itensDeSincronizacao.find((item) => item.key === "layout");
                     const layoutEnabled = syncItems.some((item) => item.key === "layout" && item.enabled);
                     const existingLayout = layoutEnabled && layoutItem
                         ? (await this.drive.getProfile(profileName, [{ ...layoutItem, enabled: true }]))?.data.layout
@@ -334,7 +340,7 @@ export default class DashboardProvider {
                     this.panel?.webview.postMessage({ type: "syncDone" });
                     await this.refreshState();
                     sendLoading(`push-${profileName}`, false);
-                    sendToast("success", `Perfil "${profileName}" atualizado`);
+                    sendToast("success", catalogo.painel.perfilAtualizado(profileName));
                     break;
                 }
 
@@ -345,7 +351,7 @@ export default class DashboardProvider {
                     await this.drive.deleteProfile(profileName);
                     await this.refreshState();
                     sendLoading(`delete-${profileName}`, false);
-                    sendToast("success", `Perfil "${profileName}" excluído`);
+                    sendToast("success", catalogo.painel.perfilExcluido(profileName));
                     break;
                 }
 
@@ -377,10 +383,10 @@ export default class DashboardProvider {
                             files: result.files,
                             nextPageToken: result.nextPageToken || null,
                             folderId: message.folderId || null,
-                            folderName: message.folderName || "Raiz",
+                            folderName: message.folderName || this.localizacao.textos.pagina.raiz,
                         });
                     } catch (err: any) {
-                        sendToast("error", err?.message || "Falha ao listar os arquivos de dados do aplicativo");
+                        sendToast("error", localizarErro(err, catalogo.painel.falhaListarDados()));
                     }
                     sendLoading("listAppData", false);
                     break;
@@ -394,10 +400,10 @@ export default class DashboardProvider {
                         this.panel?.webview.postMessage({
                             type: "filePreview",
                             content,
-                            fileName: message.fileName || "arquivo",
+                            fileName: message.fileName || catalogo.painel.arquivo(),
                         });
                     } catch (err: any) {
-                        sendToast("error", err?.message || "Falha ao visualizar o arquivo");
+                        sendToast("error", localizarErro(err, catalogo.painel.falhaVisualizarArquivo()));
                     }
                     sendLoading("previewFile", false);
                     break;
@@ -405,7 +411,7 @@ export default class DashboardProvider {
             }
         } catch (error: any) {
             this.logger.error(
-                `Falha na ação do painel: ${error?.message}`,
+                catalogo.painel.falhaAcao(localizarErro(error)),
                 "DashboardProvider.handleMessage",
                 true,
                 error
@@ -413,7 +419,7 @@ export default class DashboardProvider {
             // Fecha o modal de sincronização se estiver aberto (permite dispensar em caso de erro)
             this.panel?.webview.postMessage({ type: "syncDone" });
             sendLoading(message.command, false);
-            sendToast("error", error?.message || "Ocorreu um erro");
+            sendToast("error", localizarErro(error));
         }
     }
 
@@ -445,7 +451,7 @@ export default class DashboardProvider {
             }
         }
 
-        sendToast("success", `Perfil "${profileName}" aplicado`);
+        sendToast("success", catalogo.painel.perfilAplicado(profileName));
         this.panel?.webview.postMessage({
             type: "askRestart",
             layoutWillApplyAfterExit: result.layoutWillApplyAfterExit,
@@ -459,6 +465,9 @@ export default class DashboardProvider {
         );
         const jsUri = webview.asWebviewUri(
             vscode.Uri.joinPath(this.extensionUri, "dist", "webview", "dashboard.js")
+        );
+        const localizacaoJsUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(this.extensionUri, "dist", "webview", "localizacao.js")
         );
         const codiconsUri = webview.asWebviewUri(
             vscode.Uri.joinPath(
@@ -474,9 +483,12 @@ export default class DashboardProvider {
         );
 
         const nonce = getNonce();
+        const localizacao = this.localizacao;
+        const textos = localizacao.textos;
+        const localizacaoSerializada = serializarParaScriptInline(localizacao);
 
         return /* html */ `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="${localizacao.idiomaHtml}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -488,14 +500,14 @@ export default class DashboardProvider {
                    img-src ${webview.cspSource} https:;">
     <link href="${codiconsUri}" rel="stylesheet" />
     <link href="${cssUri}" rel="stylesheet" />
-    <title>Sync Antigravity</title>
+    <title>${escaparHtml(textos.pagina.titulo)}</title>
 </head>
 <body>
     <!-- Cabeçalho -->
     <header class="header">
         <div class="header-left">
             <span class="codicon codicon-sync header-icon"></span>
-            <h1 class="header-title">Sync Antigravity</h1>
+            <h1 class="header-title">${escaparHtml(textos.pagina.titulo)}</h1>
         </div>
         <div class="header-right" id="header-user"></div>
     </header>
@@ -505,12 +517,12 @@ export default class DashboardProvider {
         <!-- Sem sessão iniciada -->
         <div id="login-section" class="section login-section" style="display:none;">
             <div class="login-card">
-                <img class="login-logo" src="${logoUri}" alt="Logo do Sync Antigravity" />
-                <h2>Boas-vindas ao Sync Antigravity</h2>
-                <p class="login-desc">Sincronize suas configurações, extensões e atalhos entre dispositivos pelo Google Drive.</p>
+                <img class="login-logo" src="${logoUri}" alt="${escaparHtml(textos.pagina.logoAlt)}" />
+                <h2>${escaparHtml(textos.pagina.boasVindas)}</h2>
+                <p class="login-desc">${escaparHtml(textos.pagina.descricao)}</p>
                 <button class="btn btn-primary btn-lg" id="btn-login">
                     <span class="codicon codicon-sign-in"></span>
-                    Iniciar sessão com o Google
+                    ${escaparHtml(textos.pagina.iniciarSessaoGoogle)}
                 </button>
             </div>
         </div>
@@ -522,7 +534,7 @@ export default class DashboardProvider {
                 <div class="card">
                     <div class="card-header">
                         <span class="codicon codicon-account"></span>
-                        <span>Conta</span>
+                        <span>${escaparHtml(textos.pagina.conta)}</span>
                     </div>
                     <div class="card-body">
                         <div class="account-info">
@@ -531,7 +543,7 @@ export default class DashboardProvider {
                         </div>
                         <button class="btn btn-secondary btn-sm" id="btn-logout">
                             <span class="codicon codicon-sign-out"></span>
-                            Encerrar sessão
+                            ${escaparHtml(textos.pagina.encerrarSessao)}
                         </button>
                     </div>
                 </div>
@@ -539,16 +551,16 @@ export default class DashboardProvider {
                 <div class="card">
                     <div class="card-header">
                         <span class="codicon codicon-tools"></span>
-                        <span>Ações rápidas</span>
+                        <span>${escaparHtml(textos.pagina.acoesRapidas)}</span>
                     </div>
                     <div class="card-body actions-grid">
                         <button class="btn btn-accent" id="btn-create-profile">
                             <span class="codicon codicon-add"></span>
-                            Criar perfil
+                            ${escaparHtml(textos.pagina.criarPerfil)}
                         </button>
                         <button class="btn btn-secondary" id="btn-show-logs">
                             <span class="codicon codicon-output"></span>
-                            Ver registros
+                            ${escaparHtml(textos.pagina.verRegistros)}
                         </button>
                     </div>
                 </div>
@@ -559,18 +571,18 @@ export default class DashboardProvider {
                 <div class="card-header">
                     <div class="card-header-left">
                         <span class="codicon codicon-cloud"></span>
-                        <span>Perfis no Google Drive</span>
+                        <span>${escaparHtml(textos.pagina.perfisGoogleDrive)}</span>
                         <span class="badge" id="profile-count">0</span>
                     </div>
-                    <button class="btn-icon" id="btn-refresh" title="Atualizar">
+                    <button class="btn-icon" id="btn-refresh" title="${escaparHtml(textos.pagina.atualizar)}" aria-label="${escaparHtml(textos.pagina.atualizar)}">
                         <span class="codicon codicon-refresh"></span>
                     </button>
                 </div>
                 <div class="card-body">
                     <div id="profiles-empty" class="empty-state" style="display:none;">
                         <span class="codicon codicon-cloud-upload empty-icon"></span>
-                        <p>Ainda não há perfis</p>
-                        <p class="empty-hint">Crie seu primeiro perfil para começar a sincronizar.</p>
+                        <p>${escaparHtml(textos.pagina.nenhumPerfil)}</p>
+                        <p class="empty-hint">${escaparHtml(textos.pagina.primeiroPerfil)}</p>
                     </div>
                     <div id="profiles-list" class="profiles-grid"></div>
                 </div>
@@ -583,33 +595,33 @@ export default class DashboardProvider {
                 <div class="card-header">
                     <div class="card-header-left">
                         <span class="codicon codicon-folder-opened"></span>
-                        <span>Explorador de dados do aplicativo</span>
+                        <span>${escaparHtml(textos.pagina.explorador)}</span>
                     </div>
                     <div class="appdata-header-actions">
-                        <button class="btn-icon" id="btn-back-appdata" title="Voltar" style="display:none;">
+                        <button class="btn-icon" id="btn-back-appdata" title="${escaparHtml(textos.comum.voltar)}" aria-label="${escaparHtml(textos.comum.voltar)}" style="display:none;">
                             <span class="codicon codicon-arrow-left"></span>
                         </button>
-                        <button class="btn-icon" id="btn-refresh-appdata" title="Atualizar">
+                        <button class="btn-icon" id="btn-refresh-appdata" title="${escaparHtml(textos.pagina.atualizar)}" aria-label="${escaparHtml(textos.pagina.atualizar)}">
                             <span class="codicon codicon-refresh"></span>
                         </button>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="breadcrumb" id="appdata-breadcrumb">
-                        <span class="breadcrumb-item active">Raiz</span>
+                        <span class="breadcrumb-item active">${escaparHtml(textos.pagina.raiz)}</span>
                     </div>
                     <div id="appdata-empty" class="empty-state" style="display:none;">
                         <span class="codicon codicon-folder empty-icon"></span>
-                        <p>Esta pasta está vazia</p>
+                        <p>${escaparHtml(textos.pagina.pastaVazia)}</p>
                     </div>
                     <div id="appdata-table-wrapper" class="appdata-table-wrapper">
                         <table class="appdata-table" id="appdata-table">
                             <thead>
                                 <tr>
-                                    <th>Nome</th>
-                                    <th>Tipo</th>
-                                    <th>Tamanho</th>
-                                    <th>Modificado</th>
+                                    <th>${escaparHtml(textos.pagina.colunaNome)}</th>
+                                    <th>${escaparHtml(textos.pagina.colunaTipo)}</th>
+                                    <th>${escaparHtml(textos.pagina.colunaTamanho)}</th>
+                                    <th>${escaparHtml(textos.pagina.colunaModificado)}</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -624,6 +636,8 @@ export default class DashboardProvider {
     <!-- Contêiner de notificações -->
     <div id="toast-container" class="toast-container"></div>
 
+    <script nonce="${nonce}">globalThis.__SYNC_ANTIGRAVITY_L10N__ = ${localizacaoSerializada};</script>
+    <script nonce="${nonce}" src="${localizacaoJsUri}"></script>
     <script nonce="${nonce}" src="${jsUri}"></script>
 </body>
 </html>`;
@@ -642,4 +656,14 @@ function getNonce(): string {
         text += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return text;
+}
+
+/** Escapa textos localizados antes de interpolá-los no HTML estático. */
+function escaparHtml(valor: string): string {
+    return valor
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
 }

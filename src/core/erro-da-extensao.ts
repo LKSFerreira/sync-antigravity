@@ -1,0 +1,94 @@
+/** Códigos estáveis para falhas de domínio que precisam ser apresentadas em outro idioma. */
+export type CodigoErroDaExtensao =
+    | "PERFIL_ESTRUTURA_INVALIDA"
+    | "PERFIL_ITEM_REMOTO_INVALIDO"
+    | "PERFIL_LAYOUT_TAMANHO_EXCEDIDO"
+    | "PERFIL_ITEM_DESCONHECIDO"
+    | "PERFIL_SEM_ITENS_SELECIONADOS"
+    | "PERFIL_EXTENSOES_LISTA_INVALIDA"
+    | "PERFIL_EXTENSAO_ID_INVALIDO"
+    | "PERFIL_EXTENSOES_DUPLICADAS"
+    | "PERFIL_EXTENSAO_METADADOS_INVALIDOS"
+    | "PERFIL_EXTENSAO_METADADOS_LIMITE_EXCEDIDO"
+    | "PERFIL_EXTENSAO_NOME_INVALIDO"
+    | "PERFIL_SNIPPETS_PACOTE_INVALIDO"
+    | "PERFIL_SNIPPETS_QUANTIDADE_EXCEDIDA"
+    | "PERFIL_SNIPPET_NOME_INVALIDO"
+    | "PERFIL_SNIPPETS_TAMANHO_EXCEDIDO"
+    | "LAYOUT_QUANTIDADE_ENTRADAS_INVALIDA"
+    | "LAYOUT_ENTRADA_INVALIDA"
+    | "LAYOUT_WORKSPACE_IDENTIFICACAO_INVALIDA"
+    | "LAYOUT_DOCUMENTO_INVALIDO"
+    | "LAYOUT_QUANTIDADE_WORKSPACES_INVALIDA"
+    | "LAYOUT_WORKSPACE_DUPLICADO"
+    | "LAYOUT_DOCUMENTO_WORKSPACES_INVALIDO"
+    | "LAYOUT_DADOS_INVALIDOS"
+    | "LAYOUT_VERSAO_INCOMPATIVEL"
+    | "AUTH_NAO_AUTENTICADO"
+    | "AUTH_NAVEGADOR_NAO_ABRIU"
+    | "AUTH_CLIENT_ID_AUSENTE"
+    | "AUTH_CLIENT_SECRET_AUSENTE"
+    | "AUTH_TEMPO_EXPIRADO"
+    | "AUTH_NEGADA"
+    | "AUTH_STATE_INVALIDO"
+    | "AUTH_CODIGO_AUSENTE"
+    | "AUTH_SERVIDOR_RETORNO_FALHOU"
+    | "AUTH_REFRESH_TOKEN_AUSENTE"
+    | "AUTH_RESPOSTA_EXCEDE_LIMITE"
+    | "AUTH_TROCA_TEMPO_EXPIRADO"
+    | "AUTH_RESPOSTA_TOKEN_INVALIDA"
+    | "AUTH_FALHA_OAUTH"
+    | "AUTH_TOKENS_INCOMPLETOS"
+    | "AUTH_HTTP_FALHOU"
+    | "AUTH_REQUISICAO_FALHOU"
+    | "DRIVE_ARQUIVO_DUPLICADO"
+    | "DRIVE_ITEM_TAMANHO_EXCEDIDO"
+    | "DRIVE_ITEM_JSON_INVALIDO"
+    | "DRIVE_META_EXTENSOES_DUPLICADO"
+    | "DRIVE_PERFIL_NAO_ENCONTRADO"
+    | "DRIVE_SYNC_META_TAMANHO_EXCEDIDO"
+    | "DRIVE_NOME_PERFIL_INVALIDO"
+    | "DRIVE_SYNC_META_INVALIDO"
+    | "DRIVE_SYNC_META_PERFIS_EXCEDIDOS"
+    | "DRIVE_SYNC_META_ITENS_INVALIDOS"
+    | "DRIVE_META_PERFIL_INVALIDO"
+    | "DRIVE_META_PERFIL_DIVERGENTE"
+    | "DRIVE_ARQUIVO_REMOTO_TAMANHO_EXCEDIDO"
+    | "DRIVE_API_FALHOU"
+    | "DRIVE_REQUISICAO_FALHOU"
+    | "SYNC_ARQUIVO_PREPARAR_FALHOU"
+    | "SYNC_DESTINOS_CONFIGURACAO_IGUAIS"
+    | "SYNC_SNIPPET_NOME_INVALIDO"
+    | "SYNC_SNIPPET_CAMINHO_INVALIDO"
+    | "SYNC_WORKSPACE_NAO_ABERTO"
+    | "SYNC_BACKUP_NAO_ENCONTRADO"
+    | "SYNC_BACKUP_ARQUIVO_INVALIDO"
+    | "SYNC_CONFIGURACAO_NAO_LOCALIZADA"
+    | "SYNC_BACKUP_ID_INVALIDO"
+    | "SYNC_BACKUP_MANIFESTO_INVALIDO"
+    | "SYNC_BACKUP_ENTRADA_INVALIDA"
+    | "SYNC_BACKUP_DESTINO_INVALIDO"
+    | "SYNC_WORKSPACE_SELECAO_NECESSARIA"
+    | "SYNC_WORKSPACE_FORA_DO_PERFIL";
+
+export type ParametroErroDaExtensao = string | number | boolean;
+
+/** Falha de domínio independente de idioma, apropriada para transporte entre camadas. */
+export class ErroDaExtensao extends Error {
+    public readonly parametros: Readonly<Record<string, ParametroErroDaExtensao>>;
+
+    public constructor(
+        public readonly codigo: CodigoErroDaExtensao,
+        parametros: Readonly<Record<string, ParametroErroDaExtensao>> = {},
+        options?: ErrorOptions
+    ) {
+        super(codigo, options);
+        this.name = "ErroDaExtensao";
+        this.parametros = Object.freeze({ ...parametros });
+    }
+}
+
+/** Permite reconhecer o contrato mesmo depois de atravessar uma fronteira de módulo. */
+export function ehErroDaExtensao(error: unknown): error is ErroDaExtensao {
+    return error instanceof ErroDaExtensao;
+}

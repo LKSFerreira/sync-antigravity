@@ -49,7 +49,7 @@ test("findExtensionDirectory localiza o primeiro diretório candidato contendo e
         assert.equal(detected, validFolder);
 
         // Quando nenhum candidato tiver extensions.json, faz fallback para o primeiro diretório existente
-        const fallbackDetected = await findExtensionDirectory([emptyFolder]);
+        const fallbackDetected = await findExtensionDirectory(["", emptyFolder]);
         assert.equal(fallbackDetected, emptyFolder);
 
         const noneDetected = await findExtensionDirectory([path.join(temporaryRoot, "inexistente")]);
@@ -274,6 +274,65 @@ test("collectInstalledExtensions faz fallback para varredura de subdiretórios s
         assert.equal(collected.length, 1);
         assert.equal(collected[0].id, "autor.desabilitada-sem-manifesto");
         assert.equal(collected[0].displayName, "Fallback Scanner");
+    } finally {
+        await rm(temporaryRoot, { recursive: true, force: true });
+    }
+});
+
+test("collectInstalledExtensions tolera manifestos e metadados auxiliares corrompidos", async () => {
+    const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "sync-ext-corrupted-"));
+
+    try {
+        await writeFile(path.join(temporaryRoot, "extensions.json"), "{conteúdo inválido", "utf8");
+        await writeFile(path.join(temporaryRoot, ".obsolete"), "{conteúdo inválido", "utf8");
+
+        const validFolder = path.join(temporaryRoot, "autor.extensao-valida");
+        await mkdir(validFolder, { recursive: true });
+        await writeFile(
+            path.join(validFolder, "package.json"),
+            JSON.stringify({ publisher: "autor", name: "extensao-valida", displayName: "Extensão válida" }),
+            "utf8",
+        );
+
+        const incompleteFolder = path.join(temporaryRoot, "autor.incompleta");
+        await mkdir(incompleteFolder, { recursive: true });
+        await writeFile(
+            path.join(incompleteFolder, "package.json"),
+            JSON.stringify({ publisher: "autor" }),
+            "utf8",
+        );
+
+        const collected = await collectInstalledExtensions({
+            candidates: [temporaryRoot],
+            activeExtensions: [],
+        });
+
+        assert.deepEqual(collected, [{ id: "autor.extensao-valida", displayName: "Extensão válida" }]);
+    } finally {
+        await rm(temporaryRoot, { recursive: true, force: true });
+    }
+});
+
+test("collectInstalledExtensions ignora manifesto com formato não matricial", async () => {
+    const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "sync-ext-object-manifest-"));
+
+    try {
+        await writeFile(path.join(temporaryRoot, "extensions.json"), "{}", "utf8");
+
+        const validFolder = path.join(temporaryRoot, "autor.extensao-varrida");
+        await mkdir(validFolder, { recursive: true });
+        await writeFile(
+            path.join(validFolder, "package.json"),
+            JSON.stringify({ publisher: "autor", name: "extensao-varrida" }),
+            "utf8",
+        );
+
+        const collected = await collectInstalledExtensions({
+            candidates: [temporaryRoot],
+            activeExtensions: [],
+        });
+
+        assert.deepEqual(collected, [{ id: "autor.extensao-varrida", displayName: "extensao-varrida" }]);
     } finally {
         await rm(temporaryRoot, { recursive: true, force: true });
     }

@@ -41,7 +41,7 @@ Get-FileHash .\artifacts\sync-antigravity.vsix -Algorithm SHA256
 Resultados esperados:
 
 - `npm ci`: instala exatamente as versões do `package-lock.json`.
-- `npm test`: todos os testes passam e a cobertura fica acima de 80%.
+- `npm test`: todos os testes passam, com cobertura mínima de 95% para linhas, statements e funções e de 90% para branches nos módulos críticos medidos.
 - `npm run package:vsix`: cria `artifacts\sync-antigravity.vsix`.
 - `Get-FileHash`: mostra o hash SHA-256 do arquivo que será testado.
 

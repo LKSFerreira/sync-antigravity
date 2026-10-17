@@ -14,6 +14,7 @@ import {
     extensions,
     workspace,
 } from "vscode";
+import { catalogo, localizarErro } from "../localizacao/catalogo";
 import { IExtensionProfileEntry, IProfile, ISyncItem } from "../models/interfaces";
 import {
     createGlobalLayoutDocument,
@@ -41,6 +42,7 @@ import {
     displayNameFromExtensionId,
     isValidExtensionId,
 } from "./installed-extensions";
+import { ErroDaExtensao } from "./erro-da-extensao";
 
 export interface ILayoutRestorePreview {
     globalEntryCount: number;
@@ -124,14 +126,16 @@ export default class SyncController {
             const found = await SyncController.findConfigFile(fileType, logger);
             if (!found) {
                 logger.error(
-                    `Não foi possível preparar ${fileType}.json no diretório do Antigravity`,
+                    localizarErro(new ErroDaExtensao("SYNC_ARQUIVO_PREPARAR_FALHOU", {
+                        arquivo: `${fileType}.json`,
+                    })),
                     "SyncController.initialize",
                     true
                 );
                 return undefined;
             }
             await context.globalState.update(`${fileType}Path`, found);
-            logger.info(`${fileType}.json localizado automaticamente: ${found}`);
+            logger.info(catalogo.registros.sincronizacao.configuracaoLocalizada(`${fileType}.json`, found));
         }
 
         // Protege contra uma detecção inesperada em que os dois arquivos coincidam.
@@ -139,7 +143,7 @@ export default class SyncController {
         const keybindingsPath = context.globalState.get<string>("keybindingsPath");
         if (settingsPath && keybindingsPath && settingsPath === keybindingsPath) {
             logger.error(
-                "Os arquivos de configurações e atalhos foram resolvidos para o mesmo destino",
+                localizarErro(new ErroDaExtensao("SYNC_DESTINOS_CONFIGURACAO_IGUAIS")),
                 "SyncController.initialize",
                 true
             );
@@ -160,7 +164,7 @@ export default class SyncController {
                 await workspace.fs.stat(Uri.file(candidatePath));
                 return candidatePath;
             } catch {
-                logger.info(`Não encontrado: ${candidatePath}`);
+                logger.info(catalogo.registros.sincronizacao.naoEncontrado(candidatePath));
             }
         }
 
@@ -171,10 +175,15 @@ export default class SyncController {
                 const defaultContent = file === "settings" ? "{}" : "[]";
                 await mkdir(path.dirname(defaultPath), { recursive: true });
                 await writeFile(defaultPath, defaultContent);
-                logger.info(`${file}.json padrão criado em: ${defaultPath}`);
+                logger.info(catalogo.registros.sincronizacao.configuracaoCriada(`${file}.json`, defaultPath));
                 return defaultPath;
             } catch (err) {
-                logger.error(`Falha ao criar ${file}.json padrão`, "findConfigFile", false, err);
+                logger.error(
+                    catalogo.registros.sincronizacao.falhaCriarConfiguracao(`${file}.json`),
+                    "findConfigFile",
+                    false,
+                    err
+                );
             }
         }
 
@@ -260,13 +269,13 @@ export default class SyncController {
                 : false;
 
             if (backupPath) {
-                this.logger.info(`Perfil aplicado. Backup local criado em: ${backupPath}`);
+                this.logger.info(catalogo.registros.sincronizacao.perfilAplicadoComBackup(backupPath));
             }
             return { layoutWillApplyAfterExit };
         } catch (error) {
             await this.rollbackProfileFileChanges(applied);
             if (backupPath) {
-                this.logger.warn(`Restauração revertida. Backup local preservado em: ${backupPath}`);
+                this.logger.warn(catalogo.registros.sincronizacao.restauracaoRevertida(backupPath));
             }
             throw error;
         }
@@ -287,7 +296,11 @@ export default class SyncController {
             const buffer = await readFile(filePath);
             return buffer.toString("base64");
         } catch {
-            this.logger.error(`Falha ao ler o arquivo de ${t} da instalação atual`, "SyncController.readConfigRaw", true);
+            this.logger.error(
+                catalogo.registros.sincronizacao.falhaLerArquivo(t),
+                "SyncController.readConfigRaw",
+                true
+            );
             return undefined;
         }
     }
@@ -316,11 +329,11 @@ export default class SyncController {
             const snippetDirectory = await this.getSnippetDirectory();
             for (const [fileName, base64Content] of Object.entries(profile.data.snippets as Record<string, string>)) {
                 if (!isSafeSnippetFileName(fileName)) {
-                    throw new Error("Nome de snippet inválido após validação");
+                    throw new ErroDaExtensao("SYNC_SNIPPET_NOME_INVALIDO");
                 }
                 const filePath = path.resolve(snippetDirectory, fileName);
                 if (!filePath.startsWith(`${path.resolve(snippetDirectory)}${path.sep}`)) {
-                    throw new Error("Caminho de snippet inválido após validação");
+                    throw new ErroDaExtensao("SYNC_SNIPPET_CAMINHO_INVALIDO");
                 }
                 changes.push(await this.createProfileFileChange(
                     path.join("snippets", fileName),
@@ -396,7 +409,7 @@ export default class SyncController {
                 }
             } catch (rollbackError) {
                 this.logger.error(
-                    `Falha ao reverter ${change.name}`,
+                    catalogo.registros.sincronizacao.falhaReverter(change.name),
                     "SyncController.rollbackProfileFileChanges",
                     false,
                     rollbackError
@@ -525,7 +538,7 @@ export default class SyncController {
         if (workspaceLayout) {
             const workspace = await this.findActiveWorkspaceStorage(userDataPath);
             if (!workspace) {
-                throw new Error("Abra o workspace de destino antes de restaurar o layout dele");
+                throw new ErroDaExtensao("SYNC_WORKSPACE_NAO_ABERTO");
             }
 
             changes.push({
@@ -545,7 +558,7 @@ export default class SyncController {
         const backupPath = await this.createLayoutBackup(changes);
         const pendingPath = await this.scheduleLayoutReplacement(changes, userDataPath);
         this.logger.info(
-            `Layout programado para a próxima saída completa do Antigravity. Backup: ${backupPath}; pendência: ${pendingPath}`,
+            catalogo.registros.sincronizacao.layoutProgramado(backupPath, pendingPath),
             true
         );
         return true;
@@ -595,7 +608,7 @@ export default class SyncController {
     public async rollbackLatestLayoutBackup(): Promise<ILayoutBackupInfo> {
         const backup = await this.getLatestLayoutBackup();
         if (!backup) {
-            throw new Error("Nenhum backup de layout disponível para restaurar");
+            throw new ErroDaExtensao("SYNC_BACKUP_NAO_ENCONTRADO");
         }
 
         const manifest = await this.readLayoutBackupManifest(backup.id);
@@ -607,7 +620,7 @@ export default class SyncController {
             const databasePath = this.getBackupTargetDatabasePath(file, userDataPath);
             const snapshotPath = path.resolve(backupPath, file.name);
             if (!snapshotPath.startsWith(`${backupPath}${path.sep}`)) {
-                throw new Error("Arquivo de backup inválido");
+                throw new ErroDaExtensao("SYNC_BACKUP_ARQUIVO_INVALIDO");
             }
             changes.push({
                 ...file,
@@ -621,7 +634,7 @@ export default class SyncController {
         const pendingPath = await this.scheduleLayoutReplacement(changes, userDataPath);
 
         this.logger.info(
-            `Backup de layout programado: ${backup.id}. Snapshot de segurança: ${rollbackBackupPath}; pendência: ${pendingPath}`,
+            catalogo.registros.sincronizacao.backupProgramado(backup.id, rollbackBackupPath, pendingPath),
             true
         );
         return backup;
@@ -671,7 +684,7 @@ export default class SyncController {
     private async resolveConfigFilePath(t: "keybindings" | "settings"): Promise<string> {
         const filePath = await SyncController.findConfigFile(t, this.logger);
         if (!filePath) {
-            throw new Error(`Não foi possível localizar ${t}.json no diretório do Antigravity`);
+            throw new ErroDaExtensao("SYNC_CONFIGURACAO_NAO_LOCALIZADA", { arquivo: `${t}.json` });
         }
         await this.context.globalState.update(`${t}Path`, filePath);
         return filePath;
@@ -716,7 +729,7 @@ export default class SyncController {
     /** Resolve uma pasta de backup sem aceitar segmentos de caminho externos. */
     private getLayoutBackupPath(backupId: string): string {
         if (!this.isSafeLayoutBackupId(backupId)) {
-            throw new Error("Identificador de backup inválido");
+            throw new ErroDaExtensao("SYNC_BACKUP_ID_INVALIDO");
         }
         return path.join(this.getLayoutBackupRoot(), backupId);
     }
@@ -726,7 +739,7 @@ export default class SyncController {
         const backupPath = this.getLayoutBackupPath(backupId);
         const data = JSON.parse(await readFile(path.join(backupPath, "manifest.json"), "utf8")) as Partial<ILayoutBackupManifest>;
         if (data.schemaVersion !== 1 || typeof data.createdAt !== "string" || !Array.isArray(data.files) || data.files.length === 0) {
-            throw new Error("Manifesto de backup inválido");
+            throw new ErroDaExtensao("SYNC_BACKUP_MANIFESTO_INVALIDO");
         }
 
         const files = data.files.map((file) => {
@@ -737,7 +750,7 @@ export default class SyncController {
                 (file.target !== "global" && file.target !== "workspace") ||
                 (file.target === "workspace" && !/^[a-f0-9]{16,128}$/i.test(file.workspaceId || ""))
             ) {
-                throw new Error("Entrada de backup inválida");
+                throw new ErroDaExtensao("SYNC_BACKUP_ENTRADA_INVALIDA");
             }
             return {
                 name: file.name,
@@ -759,7 +772,7 @@ export default class SyncController {
         if (file.target === "workspace" && file.workspaceId && file.name === `workspace-${file.workspaceId}.vscdb`) {
             return path.join(userDataPath, "workspaceStorage", file.workspaceId, "state.vscdb");
         }
-        throw new Error("Destino de backup inválido");
+        throw new ErroDaExtensao("SYNC_BACKUP_DESTINO_INVALIDO");
     }
 
     /** Aceita somente timestamps gerados pela extensão. */
@@ -842,12 +855,12 @@ export default class SyncController {
             return layouts[0];
         }
         if (!workspaceLayoutId) {
-            throw new Error("Selecione o layout de workspace que deve ser restaurado");
+            throw new ErroDaExtensao("SYNC_WORKSPACE_SELECAO_NECESSARIA");
         }
 
         const selected = layouts.find((layout) => layout.sourceId === workspaceLayoutId);
         if (!selected) {
-            throw new Error("O layout de workspace selecionado não pertence ao perfil");
+            throw new ErroDaExtensao("SYNC_WORKSPACE_FORA_DO_PERFIL");
         }
         return selected;
     }
@@ -867,7 +880,7 @@ export default class SyncController {
                 await workspace.fs.stat(Uri.file(p));
                 return p;
             } catch {
-                logger.info(`Não encontrado: ${p}`);
+                logger.info(catalogo.registros.sincronizacao.naoEncontrado(p));
             }
         }
         return null;
@@ -931,27 +944,37 @@ export default class SyncController {
 
         for (const id of toDelete) {
             if (!this.isValidExtensionId(id)) {
-                this.logger.warn(`ID de extensão inválido ignorado: ${id}`);
+                this.logger.warn(catalogo.registros.sincronizacao.extensaoInvalidaIgnorada(id));
                 continue;
             }
             try {
                 await commands.executeCommand("workbench.extensions.uninstallExtension", id);
                 needsReload = true;
             } catch (error) {
-                this.logger.error(`Falha ao desinstalar ${id}`, "applyExtensionSync", false, error);
+                this.logger.error(
+                    catalogo.registros.sincronizacao.falhaDesinstalarExtensao(id),
+                    "applyExtensionSync",
+                    false,
+                    error
+                );
             }
         }
 
         for (const id of toInstall) {
             if (!this.isValidExtensionId(id)) {
-                this.logger.warn(`ID de extensão inválido ignorado: ${id}`);
+                this.logger.warn(catalogo.registros.sincronizacao.extensaoInvalidaIgnorada(id));
                 continue;
             }
             try {
                 await commands.executeCommand("workbench.extensions.installExtension", id);
                 needsReload = true;
             } catch (error) {
-                this.logger.error(`Falha ao instalar ${id}`, "applyExtensionSync", false, error);
+                this.logger.error(
+                    catalogo.registros.sincronizacao.falhaInstalarExtensao(id),
+                    "applyExtensionSync",
+                    false,
+                    error
+                );
             }
         }
 

@@ -4,7 +4,11 @@
 import * as http from "http";
 import * as https from "https";
 import * as crypto from "crypto";
-import { ExtensionContext, Uri, env, window } from "vscode";
+import { ExtensionContext, Uri, env } from "vscode";
+import { catalogo, localizarErro } from "../localizacao/catalogo";
+import { resolverContextoDeIdioma } from "../localizacao/idioma";
+import { serializarParaScriptInline } from "../localizacao/serializacao-webview";
+import { ErroDaExtensao, ehErroDaExtensao } from "./erro-da-extensao";
 import Logger from "./logger";
 import { LOGIN_SUCCESS_EFFECT_MARKUP, LOGIN_SUCCESS_EFFECT_STYLES } from "./login-success-effect";
 
@@ -68,9 +72,7 @@ export default class GoogleAuth {
             await this.restoreTokens();
         }
         if (!this.tokens) {
-            throw new Error(
-                "Não autenticado. Inicie sessão com o Google primeiro."
-            );
+            throw new ErroDaExtensao("AUTH_NAO_AUTENTICADO");
         }
         // Refresh if expiring within 5 minutes
         if (Date.now() > this.tokens.expires_at - 5 * 60 * 1000) {
@@ -107,28 +109,33 @@ export default class GoogleAuth {
         });
 
         const authUrl = `${AUTH_URL}?${params.toString()}`;
-        this.logger.info("Opening browser for Google login...");
+        this.logger.info(catalogo.autenticacao.abrindoNavegador());
 
         // Abre o navegador
-        const opened = await env.openExternal(Uri.parse(authUrl));
+        let opened: boolean;
+        try {
+            opened = await env.openExternal(Uri.parse(authUrl));
+        } catch (cause) {
+            const error = new ErroDaExtensao("AUTH_NAVEGADOR_NAO_ABRIU", {}, { cause });
+            completeError(error);
+            throw error;
+        }
         if (!opened) {
-            const error = new Error(
-                "Falha ao abrir o navegador para iniciar sessão com o Google. Tente novamente."
-            );
+            const error = new ErroDaExtensao("AUTH_NAVEGADOR_NAO_ABRIU");
             completeError(error);
             throw error;
         }
 
         try {
             const code = await codePromise;
-            this.logger.info("Código de autorização recebido. Trocando por tokens...");
+            this.logger.info(catalogo.autenticacao.codigoRecebido());
 
             const tokenData = await this.exchangeCodeForTokens(code, redirectUri, codeVerifier);
             this.tokens = tokenData;
             await this.saveTokens();
             completeSuccess();
 
-            this.logger.info("Sessão do Google iniciada com sucesso", true);
+            this.logger.info(catalogo.autenticacao.sessaoIniciada(), true);
         } catch (error) {
             const loginError = error instanceof Error ? error : new Error(String(error));
             completeError(loginError);
@@ -140,7 +147,7 @@ export default class GoogleAuth {
     public async logout(): Promise<void> {
         this.tokens = null;
         await this.context.secrets.delete(TOKEN_KEY);
-        this.logger.info("Sessão do Google encerrada", true);
+        this.logger.info(catalogo.autenticacao.sessaoEncerrada(), true);
     }
 
     // ===== Métodos privados =====
@@ -148,9 +155,7 @@ export default class GoogleAuth {
     /** Obtém o Client ID público e impede a execução com um placeholder de desenvolvimento. */
     private getClientId(): string {
         if (!CLIENT_ID || CLIENT_ID === "undefined" || CLIENT_ID.startsWith("your_client_id")) {
-            throw new Error(
-                "GOOGLE_CLIENT_ID não foi configurado. Crie o Client ID desktop do Sync Antigravity e informe-o no arquivo .env antes de empacotar a extensão."
-            );
+            throw new ErroDaExtensao("AUTH_CLIENT_ID_AUSENTE");
         }
         return CLIENT_ID;
     }
@@ -158,9 +163,7 @@ export default class GoogleAuth {
     /** Obtém o identificador técnico exigido pelo cliente OAuth desktop do Google. */
     private getClientSecret(): string {
         if (!CLIENT_SECRET || CLIENT_SECRET === "undefined" || CLIENT_SECRET.startsWith("your_client_secret")) {
-            throw new Error(
-                "GOOGLE_CLIENT_SECRET não foi configurado. Copie o valor client_secret do JSON do cliente OAuth desktop para o arquivo .env antes de empacotar a extensão."
-            );
+            throw new ErroDaExtensao("AUTH_CLIENT_SECRET_AUSENTE");
         }
         return CLIENT_SECRET;
     }
@@ -192,19 +195,19 @@ export default class GoogleAuth {
                 server.close();
             };
             const completeSuccess = () => complete(this.getSuccessHtml());
-            const completeError = (error: Error) => complete(this.getCompletionErrorHtml(error.message));
+            const completeError = (error: Error) => complete(this.getCompletionErrorHtml(localizarErro(error)));
             const rejectAuthorization = (error: Error, res: http.ServerResponse) => {
                 if (completed) {
                     return;
                 }
                 callbackResponse = res;
                 res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-                complete(this.getErrorHtml(error.message));
+                complete(this.getErrorHtml(localizarErro(error)));
                 rejectCode(error);
             };
             const timeout = setTimeout(() => {
                 if (!authorizationReceived) {
-                    const error = new Error("O tempo para iniciar sessão expirou. Tente novamente.");
+                    const error = new ErroDaExtensao("AUTH_TEMPO_EXPIRADO");
                     completeError(error);
                     rejectCode(error);
                 }
@@ -213,14 +216,14 @@ export default class GoogleAuth {
             server.on("request", (req, res) => {
                 if (completed) {
                     res.writeHead(410);
-                    res.end("Fluxo de autenticação já concluído");
+                    res.end(catalogo.autenticacao.fluxoConcluido());
                     return;
                 }
                 const url = new URL(req.url || "/", "http://127.0.0.1");
 
                 if (url.pathname !== "/callback") {
                     res.writeHead(404);
-                    res.end("Não encontrado");
+                    res.end(catalogo.autenticacao.naoEncontrado());
                     return;
                 }
 
@@ -229,17 +232,17 @@ export default class GoogleAuth {
                 const error = url.searchParams.get("error");
 
                 if (error) {
-                    rejectAuthorization(new Error(`Login do Google negado: ${error}`), res);
+                    rejectAuthorization(new ErroDaExtensao("AUTH_NEGADA", { detalhes: error }), res);
                     return;
                 }
 
                 if (!this.isExpectedState(state, expectedState)) {
-                    rejectAuthorization(new Error("Incompatibilidade no state OAuth: possível ataque CSRF"), res);
+                    rejectAuthorization(new ErroDaExtensao("AUTH_STATE_INVALIDO"), res);
                     return;
                 }
 
                 if (!code) {
-                    rejectAuthorization(new Error("Nenhum código de autorização recebido"), res);
+                    rejectAuthorization(new ErroDaExtensao("AUTH_CODIGO_AUSENTE"), res);
                     return;
                 }
 
@@ -256,16 +259,17 @@ export default class GoogleAuth {
                 if (addr && typeof addr !== "string") {
                     resolve({ port: addr.port, codePromise, completeSuccess, completeError });
                 } else {
-                    reject(new Error("Falha ao iniciar o servidor de retorno"));
+                    reject(new ErroDaExtensao("AUTH_SERVIDOR_RETORNO_FALHOU"));
                 }
             });
 
             server.on("error", (err) => {
-                completeError(err);
+                const error = new ErroDaExtensao("AUTH_SERVIDOR_RETORNO_FALHOU", {}, { cause: err });
+                completeError(error);
                 if (!authorizationReceived) {
-                    rejectCode(err);
+                    rejectCode(error);
                 }
-                reject(err);
+                reject(error);
             });
         });
     }
@@ -308,7 +312,7 @@ export default class GoogleAuth {
     /** Atualiza o token de acesso usando refresh_token */
     private async refreshAccessToken(): Promise<void> {
         if (!this.tokens?.refresh_token) {
-            throw new Error("Nenhum token de atualização disponível");
+            throw new ErroDaExtensao("AUTH_REFRESH_TOKEN_AUSENTE");
         }
 
         const params = new URLSearchParams({
@@ -329,11 +333,11 @@ export default class GoogleAuth {
                 this.tokens.refresh_token = response.refresh_token;
             }
             await this.saveTokens();
-            this.logger.info("Token de acesso atualizado com sucesso");
+            this.logger.info(catalogo.autenticacao.tokenAtualizado());
         } catch (error: any) {
-            if (error.message?.startsWith("Falha no OAuth:")) {
+            if (ehErroDaExtensao(error) && error.codigo === "AUTH_FALHA_OAUTH") {
                 this.logger.warn(
-                    "A sessão do Google expirou ou foi revogada. Inicie sessão novamente.",
+                    catalogo.autenticacao.sessaoExpirada(),
                     true
                 );
                 this.tokens = null;
@@ -341,7 +345,7 @@ export default class GoogleAuth {
                 throw error;
             }
             this.logger.error(
-                "Falha ao atualizar o token",
+                catalogo.autenticacao.falhaAtualizarToken(),
                 "GoogleAuth.refreshAccessToken",
                 true,
                 error
@@ -370,7 +374,7 @@ export default class GoogleAuth {
                     throw new Error("Formato de token inválido");
                 }
                 this.tokens = parsed;
-                this.logger.info("Tokens restaurados do armazenamento seguro");
+                this.logger.info(catalogo.autenticacao.tokensRestaurados());
             } catch {
                 this.tokens = null;
                 await this.context.secrets.delete(TOKEN_KEY);
@@ -411,22 +415,22 @@ export default class GoogleAuth {
                 res.on("data", (chunk: string) => {
                     data += chunk;
                     if (Buffer.byteLength(data) > 64 * 1024) {
-                        req.destroy(new Error("Resposta do OAuth excede o limite permitido"));
+                        req.destroy(new ErroDaExtensao("AUTH_RESPOSTA_EXCEDE_LIMITE"));
                     }
                 });
-                res.on("error", rejectOnce);
+                res.on("error", (error) => rejectOnce(this.normalizarErroDeRede(error)));
                 res.on("end", () => {
                     if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
-                        rejectOnce(new Error(this.getOAuthErrorMessage(data, res.statusCode)));
+                        rejectOnce(this.getOAuthError(data, res.statusCode));
                         return;
                     }
                     resolveOnce(data);
                 });
             });
             req.setTimeout(30_000, () => {
-                req.destroy(new Error("A troca de tokens do Google excedeu o limite de 30 segundos."));
+                req.destroy(new ErroDaExtensao("AUTH_TROCA_TEMPO_EXPIRADO"));
             });
-            req.on("error", rejectOnce);
+            req.on("error", (error) => rejectOnce(this.normalizarErroDeRede(error)));
             req.write(body);
             req.end();
         });
@@ -442,16 +446,17 @@ export default class GoogleAuth {
         try {
             response = JSON.parse(data);
         } catch {
-            throw new Error("OAuth retornou uma resposta de token inválida");
+            throw new ErroDaExtensao("AUTH_RESPOSTA_TOKEN_INVALIDA");
         }
         if (!response || typeof response !== "object" || Array.isArray(response)) {
-            throw new Error("OAuth retornou uma resposta de token inválida");
+            throw new ErroDaExtensao("AUTH_RESPOSTA_TOKEN_INVALIDA");
         }
         const tokenResponse = response as Record<string, unknown>;
         if (typeof tokenResponse.error === "string") {
-            throw new Error(
-                `Falha no OAuth: ${typeof tokenResponse.error_description === "string" ? tokenResponse.error_description : tokenResponse.error}`
-            );
+            const detalhes = typeof tokenResponse.error_description === "string"
+                ? tokenResponse.error_description.slice(0, 240)
+                : tokenResponse.error;
+            throw new ErroDaExtensao("AUTH_FALHA_OAUTH", { detalhes });
         }
         if (
             typeof tokenResponse.access_token !== "string" ||
@@ -461,7 +466,7 @@ export default class GoogleAuth {
             tokenResponse.expires_in <= 0 ||
             (requireRefreshToken && (typeof tokenResponse.refresh_token !== "string" || tokenResponse.refresh_token.length === 0))
         ) {
-            throw new Error("OAuth retornou tokens incompletos ou inválidos");
+            throw new ErroDaExtensao("AUTH_TOKENS_INCOMPLETOS");
         }
         return {
             access_token: tokenResponse.access_token,
@@ -471,7 +476,7 @@ export default class GoogleAuth {
     }
 
     /** Extrai uma causa segura e limitada da resposta de erro do OAuth. */
-    private getOAuthErrorMessage(data: string, statusCode?: number): string {
+    private getOAuthError(data: string, statusCode?: number): ErroDaExtensao {
         try {
             const parsed: unknown = JSON.parse(data);
             if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
@@ -481,13 +486,23 @@ export default class GoogleAuth {
                     ? response.error_description.slice(0, 240)
                     : undefined;
                 if (code) {
-                    return `Falha no OAuth: ${code}${description ? ` - ${description}` : ""}`;
+                    return new ErroDaExtensao("AUTH_FALHA_OAUTH", {
+                        detalhes: `${code}${description ? ` - ${description}` : ""}`,
+                    });
                 }
             }
         } catch {
             // Respostas não JSON não revelam uma causa segura para a pessoa usuária.
         }
-        return `OAuth respondeu com HTTP ${statusCode || "desconhecido"}`;
+        return new ErroDaExtensao("AUTH_HTTP_FALHOU", {
+            status: statusCode || catalogo.geral.desconhecido(),
+        });
+    }
+
+    private normalizarErroDeRede(error: unknown): ErroDaExtensao {
+        return ehErroDaExtensao(error)
+            ? error
+            : new ErroDaExtensao("AUTH_REQUISICAO_FALHOU", {}, { cause: error });
     }
 
     /** Verifica o formato antes de usar dados vindos do SecretStorage. */
@@ -499,12 +514,13 @@ export default class GoogleAuth {
 
     /** Página exibida enquanto o código OAuth é trocado pelos tokens. */
     private getPendingLoginHtml(): string {
+        const idiomaHtml = resolverContextoDeIdioma(env.language).idiomaHtml;
         return `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="${idiomaHtml}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Concluindo sessão - Sync Antigravity</title>
+<title>${this.escapeHtml(catalogo.autenticacao.paginaTitulo())}</title>
 <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
@@ -528,8 +544,8 @@ export default class GoogleAuth {
 </head>
 <body>
     <main id="login-status" class="success-message">
-        <h1>Concluindo início de sessão...</h1>
-        <p>Validando a sessão no Antigravity.</p>
+        <h1>${this.escapeHtml(catalogo.autenticacao.paginaPendenteTitulo())}</h1>
+        <p>${this.escapeHtml(catalogo.autenticacao.paginaPendenteDescricao())}</p>
     </main>`;
     }
 
@@ -537,27 +553,28 @@ export default class GoogleAuth {
     private getSuccessHtml(): string {
         const markup = `${LOGIN_SUCCESS_EFFECT_MARKUP}
     <main class="success-message">
-        <h1><span class="success-check" aria-hidden="true">✓</span>Sessão iniciada com sucesso!</h1>
-        <p>Você pode fechar esta aba e retornar ao Antigravity.</p>
+        <h1><span class="success-check" aria-hidden="true">✓</span>${this.escapeHtml(catalogo.autenticacao.paginaSucessoTitulo())}</h1>
+        <p>${this.escapeHtml(catalogo.autenticacao.paginaSucessoDescricao())}</p>
     </main>`;
-        return `<script>document.body.innerHTML = ${JSON.stringify(markup)}; setTimeout(() => window.close(), 3000);</script></body></html>`;
+        return `<script>document.body.innerHTML = ${serializarParaScriptInline(markup)}; setTimeout(() => window.close(), 3000);</script></body></html>`;
     }
 
     private getCompletionErrorHtml(error: string): string {
         const markup = `<main class="success-message">
-        <h1 style="color:#f38ba8">Falha ao iniciar sessão</h1>
+        <h1 style="color:#f38ba8">${this.escapeHtml(catalogo.autenticacao.paginaFalhaTitulo())}</h1>
         <p>${this.escapeHtml(error)}</p>
-        <p style="margin-top:12px">Feche esta aba e tente novamente no Antigravity.</p>
+        <p style="margin-top:12px">${this.escapeHtml(catalogo.autenticacao.paginaFalhaDescricao())}</p>
     </main>`;
-        return `<script>document.body.innerHTML = ${JSON.stringify(markup)};</script></body></html>`;
+        return `<script>document.body.innerHTML = ${serializarParaScriptInline(markup)};</script></body></html>`;
     }
 
     /** Página HTML de erro */
     private getErrorHtml(error: string): string {
-        return `<!DOCTYPE html><html><body style="font-family:system-ui;text-align:center;padding:60px;background:#1e1e2e;color:#cdd6f4">
-<h1 style="color:#f38ba8">❌ Falha ao iniciar sessão</h1>
+        const idiomaHtml = resolverContextoDeIdioma(env.language).idiomaHtml;
+        return `<!DOCTYPE html><html lang="${idiomaHtml}"><body style="font-family:system-ui;text-align:center;padding:60px;background:#1e1e2e;color:#cdd6f4">
+<h1 style="color:#f38ba8">❌ ${this.escapeHtml(catalogo.autenticacao.paginaFalhaTitulo())}</h1>
 <p>${this.escapeHtml(error)}</p>
-<p>Feche esta aba e tente novamente no Antigravity.</p>
+<p>${this.escapeHtml(catalogo.autenticacao.paginaFalhaDescricao())}</p>
 </body></html>`;
     }
 

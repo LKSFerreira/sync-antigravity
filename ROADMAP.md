@@ -87,7 +87,7 @@ O projeto será aberto, transparente e controlado por este fork. Ele não será 
 - [x] Criar conta, assinar o Publisher Agreement e criar o namespace de publisher no Open VSX.
 - [x] Obter a aprovação da propriedade do namespace `lksferreira` no Open VSX.
 - [x] Preparar bootstrap temporário e restrito para a primeira publicação no Open VSX.
-- [ ] Configurar publicação confiável via OpenID Connect (OIDC) no Open VSX.
+- [x] Configurar publicação confiável via OpenID Connect (OIDC) no Open VSX.
 - [x] Atualizar `package.json` com `name`, `displayName`, `publisher`, URLs e palavras-chave próprios.
 - [x] Preparar CHANGELOG, política de privacidade e instruções de migração.
 - [x] Publicar o site com instruções de uso, política de privacidade e termos de serviço em `sync.semsusto.app`.
@@ -107,6 +107,18 @@ O projeto será aberto, transparente e controlado por este fork. Ele não será 
 - [ ] Comunicar a disponibilidade e as limitações conhecidas.
 
 **Critério de aceite final:** a extensão é instalável pelo marketplace usado pelo Antigravity IDE, restaura com segurança o perfil portátil e possui release reproduzível e verificável.
+
+## Fase 7: Internacionalização automática
+
+- [x] Usar inglês como idioma-base do manifesto e do runtime.
+- [x] Apresentar qualquer variante de português em pt-BR.
+- [x] Usar inglês como fallback para idiomas não suportados.
+- [x] Centralizar os textos do Extension Host e da webview sem duplicar componentes por idioma.
+- [x] Manter rótulos e idioma fora dos dados sincronizados.
+- [x] Validar automaticamente chaves, placeholders, aliases e conteúdo do VSIX.
+- [-] Validar manualmente o manifesto, a webview e o OAuth no Antigravity em inglês, português e um terceiro idioma.
+
+**Critério de aceite:** toda a experiência acompanha o idioma da IDE sem misturar idiomas, e qualquer localidade não suportada recebe inglês de forma previsível.
 
 ## Dependências externas
 

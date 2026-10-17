@@ -7,6 +7,8 @@
 
 Sync settings, extensions, keyboard shortcuts, snippets, and the **Antigravity IDE** layout across devices using **Google Drive**.
 
+The interface automatically follows the IDE language. Any Portuguese locale uses Brazilian Portuguese; English and unsupported languages use English.
+
 Learn how to install and use the extension on the [Sync Antigravity website](https://sync.semsusto.app/).
 
 > **Independent fork:** maintained by [LKSFerreira](https://github.com/LKSFerreira), derived from [thotam/antigravity-sync](https://github.com/thotam/antigravity-sync), and distributed under the MIT License.
@@ -41,12 +43,12 @@ Search for **Sync Antigravity** in Antigravity's Extensions panel or open the [e
 ## First use
 
 1. Open the Command Palette with `Ctrl+Shift+P` or `Cmd+Shift+P`.
-2. Run **Sync Antigravity: Abrir painel**, or select **Sync Antigravity** in the status bar.
-3. Select **Iniciar sessão com o Google** and complete the authorization in your browser.
+2. Run **Sync Antigravity: Open dashboard**, or select **Sync Antigravity** in the status bar.
+3. Select **Sign in with Google** and complete the authorization in your browser.
 4. Back in the dashboard, create a profile with a recognizable name, such as `Personal laptop`.
 5. Choose the items you want to include and upload the profile.
 
-On another computer, install the extension, sign in to the **same Google Account**, open the dashboard, and select **Aplicar** on the desired profile. The extension automatically detects the current Antigravity installation paths, displays a preview before changing data, and asks for confirmation before installing or removing extensions. Reload the window when prompted.
+On another computer, install the extension, sign in to the **same Google Account**, open the dashboard, and select **Apply** on the desired profile. The extension automatically detects the current Antigravity installation paths, displays a preview before changing data, and asks for confirmation before installing or removing extensions. Reload the window when prompted.
 
 ## Security and privacy
 
@@ -61,8 +63,8 @@ Read the [Privacy Policy](https://sync.semsusto.app/privacidade/) and [Terms of 
 
 | Command | Purpose |
 | --- | --- |
-| **Sync Antigravity: Abrir painel** | Opens the login and profiles dashboard. |
-| **Sync Antigravity: Reverter último layout** | Restores the most recent local layout backup. |
+| **Sync Antigravity: Open dashboard** | Opens the login and profiles dashboard. |
+| **Sync Antigravity: Restore latest layout** | Restores the most recent local layout backup. |
 
 If something does not work as expected, [open a GitHub issue](https://github.com/LKSFerreira/sync-antigravity/issues) and include the Antigravity version, extension version, and steps to reproduce the problem. Do not submit tokens, credentials, or configuration files containing sensitive data.
 

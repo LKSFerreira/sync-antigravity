@@ -2,6 +2,21 @@
 
 > 🇧🇷 **Prefere ler em português? Acesse o [changelog em pt-BR](CHANGELOG.pt-BR.md).**
 
+## [0.8.0] - 2026-10-17
+
+### Added
+
+- Automatic interface localization based on the IDE language: every Portuguese locale uses Brazilian Portuguese, while English and unsupported languages use English.
+- Localized extension manifest, commands, settings, status bar, dashboard, synchronization progress, validation messages, logs, and OAuth browser pages.
+- Automated localization checks for missing keys, incompatible placeholders, generic Portuguese aliases, prohibited HTML, and required VSIX files.
+- Expanded regression coverage for remote profile validation, layout compatibility, installed extension discovery, SQLite transactions, and deferred layout replacement.
+
+### Changed
+
+- Synchronization definitions and profile previews now carry stable technical data instead of persisted labels or preformatted language-specific sentences.
+- Domain validation failures now use stable error codes and safe parameters, translated only at the presentation boundary.
+- The automated test gate now requires at least 95% line, statement, and function coverage and 90% branch coverage across the measured critical modules.
+
 ## [0.7.19] - 2026-10-15
 
 ### Added

@@ -2,6 +2,7 @@
 
 import { IExtensionProfileEntry, IProfile, ISyncItem } from "../models/interfaces";
 import { getWorkspaceLayouts, normalizeLayoutProfile } from "../models/layout-profile";
+import { ErroDaExtensao } from "./erro-da-extensao";
 
 export const MAX_REMOTE_PROFILE_FILE_BYTES = 3 * 1024 * 1024;
 const MAX_CONFIG_BYTES = 1024 * 1024;
@@ -13,8 +14,12 @@ const MAX_LAYOUT_SERIALIZED_BYTES = 1024 * 1024;
 
 export interface IProfilePreviewItem {
     key: string;
-    label: string;
-    detail: string;
+    detalhe:
+        | { tipo: "ausente" }
+        | { tipo: "bytes"; bytes: number }
+        | { tipo: "extensoes"; quantidade: number }
+        | { tipo: "snippets"; quantidadeArquivos: number; totalBytes: number }
+        | { tipo: "layout"; quantidadeGlobal: number; quantidadeWorkspaces: number };
 }
 
 export interface IProfileRestorePreview {
@@ -41,7 +46,7 @@ export function validateRemoteProfile(
     syncItems: ISyncItem[]
 ): { profile: IProfile; preview: IProfileRestorePreview } {
     if (!profile || typeof profile.profileName !== "string" || !profile.data || typeof profile.data !== "object" || Array.isArray(profile.data)) {
-        throw new Error("Estrutura de perfil inválida");
+        throw new ErroDaExtensao("PERFIL_ESTRUTURA_INVALIDA");
     }
 
     const data: Record<string, unknown> = {};
@@ -49,7 +54,7 @@ export function validateRemoteProfile(
     let availableItems = 0;
     for (const item of syncItems.filter((syncItem) => syncItem.enabled)) {
         if (!Object.prototype.hasOwnProperty.call(profile.data, item.key)) {
-            preview.items.push({ key: item.key, label: item.label, detail: "Não presente no perfil" });
+            preview.items.push({ key: item.key, detalhe: { tipo: "ausente" } });
             continue;
         }
 
@@ -58,9 +63,12 @@ export function validateRemoteProfile(
         switch (item.key) {
             case "settings":
             case "keybindings": {
-                const content = validateBase64(value, item.label, MAX_CONFIG_BYTES);
+                const content = validateBase64(value, item.key, MAX_CONFIG_BYTES);
                 data[item.key] = content;
-                preview.items.push({ key: item.key, label: item.label, detail: formatBytes(Buffer.byteLength(content, "base64")) });
+                preview.items.push({
+                    key: item.key,
+                    detalhe: { tipo: "bytes", bytes: Buffer.byteLength(content, "base64") },
+                });
                 break;
             }
             case "extensions": {
@@ -76,19 +84,31 @@ export function validateRemoteProfile(
                         displayName: validatedExtensions.displayNames[id] || id,
                     })),
                 };
-                preview.items.push({ key: item.key, label: item.label, detail: `${validatedExtensions.ids.length} extensão(ões)` });
+                preview.items.push({
+                    key: item.key,
+                    detalhe: { tipo: "extensoes", quantidade: validatedExtensions.ids.length },
+                });
                 break;
             }
             case "snippets": {
                 const snippets = validateSnippets(value);
                 data.snippets = snippets.files;
-                preview.items.push({ key: item.key, label: item.label, detail: `${snippets.count} arquivo(s), ${formatBytes(snippets.totalBytes)}` });
+                preview.items.push({
+                    key: item.key,
+                    detalhe: {
+                        tipo: "snippets",
+                        quantidadeArquivos: snippets.count,
+                        totalBytes: snippets.totalBytes,
+                    },
+                });
                 break;
             }
             case "layout": {
                 const serializedBytes = Buffer.byteLength(JSON.stringify(value), "utf8");
                 if (serializedBytes > MAX_LAYOUT_SERIALIZED_BYTES) {
-                    throw new Error("Layout remoto excede o tamanho permitido");
+                    throw new ErroDaExtensao("PERFIL_LAYOUT_TAMANHO_EXCEDIDO", {
+                        limiteBytes: MAX_LAYOUT_SERIALIZED_BYTES,
+                    });
                 }
                 const layout = normalizeLayoutProfile(value);
                 const workspaces = getWorkspaceLayouts(layout);
@@ -104,30 +124,33 @@ export function validateRemoteProfile(
                 };
                 preview.items.push({
                     key: item.key,
-                    label: item.label,
-                    detail: `${layout.global.entries.length} item(ns) globais, ${workspaces.length} workspace(s)`,
+                    detalhe: {
+                        tipo: "layout",
+                        quantidadeGlobal: layout.global.entries.length,
+                        quantidadeWorkspaces: workspaces.length,
+                    },
                 });
                 break;
             }
             default:
-                throw new Error(`Item de sincronização desconhecido: ${item.key}`);
+                throw new ErroDaExtensao("PERFIL_ITEM_DESCONHECIDO", { item: item.key });
         }
     }
 
     if (availableItems === 0) {
-        throw new Error("O perfil não contém nenhum dos itens selecionados");
+        throw new ErroDaExtensao("PERFIL_SEM_ITENS_SELECIONADOS");
     }
     return { profile: { profileName: profile.profileName, data }, preview };
 }
 
 /** Impede payloads de base64 malformados ou desproporcionalmente grandes. */
-function validateBase64(value: unknown, label: string, maxBytes: number): string {
+function validateBase64(value: unknown, item: string, maxBytes: number): string {
     if (typeof value !== "string" || value.length > Math.ceil(maxBytes / 3) * 4 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
-        throw new Error(`${label} remoto inválido`);
+        throw new ErroDaExtensao("PERFIL_ITEM_REMOTO_INVALIDO", { item });
     }
     const decoded = Buffer.from(value, "base64");
     if (decoded.byteLength > maxBytes || decoded.toString("base64") !== value) {
-        throw new Error(`${label} remoto inválido`);
+        throw new ErroDaExtensao("PERFIL_ITEM_REMOTO_INVALIDO", { item });
     }
     return value;
 }
@@ -138,12 +161,12 @@ function validateExtensions(
     savedDisplayNames: Record<string, string>
 ): { ids: string[]; displayNames: Record<string, string> } {
     if (!Array.isArray(value) || value.length > MAX_EXTENSION_IDS) {
-        throw new Error("Lista remota de extensões inválida");
+        throw new ErroDaExtensao("PERFIL_EXTENSOES_LISTA_INVALIDA");
     }
     const entries = value.map((value) => {
         const id = typeof value === "string" ? value : value?.id;
         if (typeof id !== "string" || !/^[a-z0-9][a-z0-9-]*\.[a-z0-9][a-z0-9-]*$/i.test(id)) {
-            throw new Error("ID remoto de extensão inválido");
+            throw new ErroDaExtensao("PERFIL_EXTENSAO_ID_INVALIDO");
         }
         const suppliedDisplayName = typeof value === "string" ? savedDisplayNames[id] : value?.displayName;
         const displayName = validateExtensionDisplayName(suppliedDisplayName);
@@ -153,7 +176,7 @@ function validateExtensions(
         };
     });
     if (new Set(entries.map((entry) => entry.id)).size !== entries.length) {
-        throw new Error("Lista remota de extensões contém duplicidades");
+        throw new ErroDaExtensao("PERFIL_EXTENSOES_DUPLICADAS");
     }
     return {
         ids: entries.map((entry) => entry.id),
@@ -167,20 +190,22 @@ function validateExtensionDisplayNames(value: unknown): Record<string, string> {
         return {};
     }
     if (!value || typeof value !== "object" || Array.isArray(value)) {
-        throw new Error("Metadados remotos de extensões inválidos");
+        throw new ErroDaExtensao("PERFIL_EXTENSAO_METADADOS_INVALIDOS");
     }
     const entries = Object.entries(value as Record<string, unknown>);
     if (entries.length > MAX_EXTENSION_IDS) {
-        throw new Error("Metadados remotos de extensões excedem o limite permitido");
+        throw new ErroDaExtensao("PERFIL_EXTENSAO_METADADOS_LIMITE_EXCEDIDO", {
+            limite: MAX_EXTENSION_IDS,
+        });
     }
     const displayNames: Record<string, string> = {};
     for (const [id, displayName] of entries) {
         if (!isValidExtensionId(id)) {
-            throw new Error("ID remoto de extensão inválido");
+            throw new ErroDaExtensao("PERFIL_EXTENSAO_ID_INVALIDO");
         }
         const normalized = validateExtensionDisplayName(displayName);
         if (!normalized) {
-            throw new Error("Nome remoto de extensão inválido");
+            throw new ErroDaExtensao("PERFIL_EXTENSAO_NOME_INVALIDO");
         }
         displayNames[id] = normalized;
     }
@@ -192,7 +217,7 @@ function validateExtensionDisplayName(value: unknown): string | undefined {
         return undefined;
     }
     if (typeof value !== "string" || value.trim().length === 0 || value.length > 160 || /[\u0000-\u001F\u007F]/.test(value)) {
-        throw new Error("Nome remoto de extensão inválido");
+        throw new ErroDaExtensao("PERFIL_EXTENSAO_NOME_INVALIDO");
     }
     return value.trim();
 }
@@ -214,23 +239,27 @@ function displayNameFromExtensionId(id: string): string {
 /** Valida nomes e conteúdo de snippets como um pacote fechado, sem aplicação parcial. */
 function validateSnippets(value: unknown): { files: Record<string, string>; count: number; totalBytes: number } {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
-        throw new Error("Pacote remoto de snippets inválido");
+        throw new ErroDaExtensao("PERFIL_SNIPPETS_PACOTE_INVALIDO");
     }
     const entries = Object.entries(value as Record<string, unknown>);
     if (entries.length > MAX_SNIPPET_FILES) {
-        throw new Error("Quantidade de snippets excede o limite permitido");
+        throw new ErroDaExtensao("PERFIL_SNIPPETS_QUANTIDADE_EXCEDIDA", {
+            limite: MAX_SNIPPET_FILES,
+        });
     }
 
     let totalBytes = 0;
     const files: Record<string, string> = {};
     for (const [fileName, content] of entries) {
         if (!isSafeSnippetFileName(fileName)) {
-            throw new Error("Nome remoto de snippet inválido");
+            throw new ErroDaExtensao("PERFIL_SNIPPET_NOME_INVALIDO", { arquivo: fileName });
         }
-        const base64 = validateBase64(content, `Snippet ${fileName}`, MAX_SNIPPET_FILE_BYTES);
+        const base64 = validateBase64(content, "snippets", MAX_SNIPPET_FILE_BYTES);
         totalBytes += Buffer.byteLength(base64, "base64");
         if (totalBytes > MAX_SNIPPETS_TOTAL_BYTES) {
-            throw new Error("Pacote remoto de snippets excede o tamanho permitido");
+            throw new ErroDaExtensao("PERFIL_SNIPPETS_TAMANHO_EXCEDIDO", {
+                limiteBytes: MAX_SNIPPETS_TOTAL_BYTES,
+            });
         }
         files[fileName] = base64;
     }
@@ -247,11 +276,4 @@ export function isSafeSnippetFileName(fileName: string): boolean {
         !fileName.includes("..") &&
         (fileName.endsWith(".json") || fileName.endsWith(".code-snippets"))
     );
-}
-
-function formatBytes(bytes: number): string {
-    if (bytes < 1024) {
-        return `${bytes} B`;
-    }
-    return `${(bytes / 1024).toFixed(1)} KiB`;
 }

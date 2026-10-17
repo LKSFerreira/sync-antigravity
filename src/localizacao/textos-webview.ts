@@ -1,0 +1,153 @@
+import * as vscode from "vscode";
+import { ContextoDeIdioma, resolverContextoDeIdioma } from "./idioma";
+
+/** Monta uma única fonte de textos para o HTML inicial e para o JavaScript da webview. */
+export function criarTextosWebview() {
+    return Object.freeze({
+        comum: Object.freeze({
+            confirmar: vscode.l10n.t("Confirm"),
+            cancelar: vscode.l10n.t("Cancel"),
+            criar: vscode.l10n.t("Create"),
+            aplicar: vscode.l10n.t({ message: "Apply", comment: ["Action that applies a synchronization profile"] }),
+            atualizar: vscode.l10n.t("Update"),
+            excluir: vscode.l10n.t("Delete"),
+            fechar: vscode.l10n.t("Close"),
+            dispensar: vscode.l10n.t("Dismiss"),
+            voltar: vscode.l10n.t("Back"),
+            anterior: vscode.l10n.t("Previous"),
+            proxima: vscode.l10n.t("Next"),
+            maisTarde: vscode.l10n.t("Later"),
+            sincronizar: vscode.l10n.t("Synchronize"),
+            entrada: vscode.l10n.t("Input"),
+            temCerteza: vscode.l10n.t("Are you sure?"),
+            validado: vscode.l10n.t("Validated"),
+            item: vscode.l10n.t("Item"),
+            desconhecido: vscode.l10n.t("Unknown"),
+        }),
+        pagina: Object.freeze({
+            titulo: "Sync Antigravity",
+            logoAlt: vscode.l10n.t("Sync Antigravity logo"),
+            boasVindas: vscode.l10n.t("Welcome to Sync Antigravity"),
+            descricao: vscode.l10n.t("Synchronize your settings, extensions, and keyboard shortcuts across devices through Google Drive."),
+            iniciarSessaoGoogle: vscode.l10n.t("Sign in with Google"),
+            conta: vscode.l10n.t("Account"),
+            encerrarSessao: vscode.l10n.t("Sign out"),
+            acoesRapidas: vscode.l10n.t("Quick actions"),
+            criarPerfil: vscode.l10n.t("Create profile"),
+            verRegistros: vscode.l10n.t("View logs"),
+            perfisGoogleDrive: vscode.l10n.t("Profiles on Google Drive"),
+            atualizar: vscode.l10n.t("Refresh"),
+            nenhumPerfil: vscode.l10n.t("There are no profiles yet"),
+            primeiroPerfil: vscode.l10n.t("Create your first profile to start synchronizing."),
+            explorador: vscode.l10n.t("Application data explorer"),
+            raiz: vscode.l10n.t("Root"),
+            pastaVazia: vscode.l10n.t("This folder is empty"),
+            colunaNome: vscode.l10n.t("Name"),
+            colunaTipo: vscode.l10n.t("Type"),
+            colunaTamanho: vscode.l10n.t("Size"),
+            colunaModificado: vscode.l10n.t("Modified"),
+        }),
+        formulario: Object.freeze({
+            itensSincronizacao: vscode.l10n.t("Synchronization items"),
+            selecioneUmItem: vscode.l10n.t("Select at least one item"),
+            informarNomePerfil: vscode.l10n.t("Enter a name for the new synchronization profile."),
+            exemploNomePerfil: vscode.l10n.t("e.g. work, home, laptop"),
+            nomeObrigatorio: vscode.l10n.t("The profile name is required"),
+            nomeCaracteres: vscode.l10n.t("Use only letters, numbers, hyphens, and underscores"),
+        }),
+        autenticacao: Object.freeze({
+            confirmarSaida: vscode.l10n.t("Are you sure you want to sign out of Google?"),
+            contaConectada: vscode.l10n.t("Google Account connected"),
+            iniciandoSessao: vscode.l10n.t("Signing in..."),
+        }),
+        perfil: Object.freeze({
+            aplicarTitulo: vscode.l10n.t("Apply profile"),
+            aplicarPergunta: vscode.l10n.t("Apply \"{nome}\" to this Antigravity installation?"),
+            atualizarTitulo: vscode.l10n.t("Update profile"),
+            atualizarPergunta: vscode.l10n.t("Update \"{nome}\" with the current settings?"),
+            excluirTitulo: vscode.l10n.t("Delete profile"),
+            excluirPergunta: vscode.l10n.t("This will permanently delete \"{nome}\" from Google Drive. This action cannot be undone."),
+            carregando: vscode.l10n.t("Loading profiles..."),
+            aplicarDescricao: vscode.l10n.t("Apply this profile to this Antigravity installation"),
+            atualizarDescricao: vscode.l10n.t("Update this profile with the current configuration"),
+            excluirDescricao: vscode.l10n.t("Delete profile"),
+        }),
+        previa: Object.freeze({
+            alternarExtensoes: vscode.l10n.t("Show or hide the extension list"),
+            nenhumItem: vscode.l10n.t("No items are available to restore."),
+            nenhumLayoutWorkspace: vscode.l10n.t("This profile does not contain a workspace layout."),
+            quantidadeItem: vscode.l10n.t("{quantidade} item"),
+            quantidadeItens: vscode.l10n.t("{quantidade} items"),
+            nenhumaChaveGlobal: vscode.l10n.t("No global keys were saved."),
+            escolhaWorkspace: vscode.l10n.t("Choose which workspace should receive the layout on this computer."),
+            layoutGlobalItem: vscode.l10n.t("Global layout: {quantidade} item"),
+            layoutGlobalItens: vscode.l10n.t("Global layout: {quantidade} items"),
+            layoutWorkspace: vscode.l10n.t("Workspace layout"),
+            instalar: vscode.l10n.t("Install"),
+            remover: vscode.l10n.t("Remove"),
+            presente: vscode.l10n.t("Present"),
+            nenhumaExtensao: vscode.l10n.t("There are no extensions in the profile."),
+            todasInstaladas: vscode.l10n.t("All installed"),
+            paraInstalar: vscode.l10n.t("{quantidade} to install"),
+            paraRemover: vscode.l10n.t("{quantidade} to remove"),
+            extensoesQuantidade: vscode.l10n.t("Extensions ({quantidade})"),
+            listaExtensoes: vscode.l10n.t("Extension list"),
+            confirmacaoExtensoes: vscode.l10n.t("Extensions will only be changed after an additional confirmation."),
+            titulo: vscode.l10n.t("Restore preview"),
+            descricao: vscode.l10n.t("The profile {nome} will only be applied after this confirmation. Settings, keyboard shortcuts, and snippets will receive a local backup before any changes."),
+            itensRestaurados: vscode.l10n.t("Items to be restored"),
+            aplicarPerfil: vscode.l10n.t("Apply profile"),
+            selecioneWorkspace: vscode.l10n.t("Select the workspace layout to be restored"),
+            detalheAusente: vscode.l10n.t("Not present in the profile"),
+            detalheBytes: vscode.l10n.t("{tamanho}"),
+            detalheExtensao: vscode.l10n.t("{quantidade} extension"),
+            detalheExtensoes: vscode.l10n.t("{quantidade} extensions"),
+            detalheSnippet: vscode.l10n.t("{quantidade} file, {tamanho}"),
+            detalheSnippets: vscode.l10n.t("{quantidade} files, {tamanho}"),
+            detalheLayoutGlobal: vscode.l10n.t("{quantidade} global item"),
+            detalheLayoutGlobais: vscode.l10n.t("{quantidade} global items"),
+            detalheLayoutWorkspace: vscode.l10n.t("{quantidade} workspace"),
+            detalheLayoutWorkspaces: vscode.l10n.t("{quantidade} workspaces"),
+        }),
+        explorador: Object.freeze({
+            carregandoArquivos: vscode.l10n.t("Loading files..."),
+            pasta: vscode.l10n.t("Folder"),
+            texto: vscode.l10n.t("Text"),
+            imagem: vscode.l10n.t("Image"),
+            arquivo: vscode.l10n.t("File"),
+            visualizar: vscode.l10n.t("View"),
+            pagina: vscode.l10n.t("Page {pagina}"),
+        }),
+        progresso: Object.freeze({
+            preparando: vscode.l10n.t("Preparing..."),
+            concluidos: vscode.l10n.t("{concluidos} / {total} completed"),
+        }),
+        extensoes: Object.freeze({
+            semNome: vscode.l10n.t("Unnamed extension"),
+            resumo: vscode.l10n.t("Extensions to install: {instalar}. Extensions to remove: {remover}."),
+            instalarLista: vscode.l10n.t("Install:"),
+            removerLista: vscode.l10n.t("Remove:"),
+            titulo: vscode.l10n.t("Extension synchronization"),
+            pular: vscode.l10n.t("Skip"),
+        }),
+        reinicializacao: Object.freeze({
+            titulo: vscode.l10n.t("Restart required"),
+            comLayout: vscode.l10n.t("Profile applied. Restart Antigravity now to finish applying the layout, settings, and extensions. Save your work before continuing."),
+            semLayout: vscode.l10n.t("Profile applied. Restart Antigravity now to load all changes."),
+            agora: vscode.l10n.t("Restart now"),
+        }),
+    });
+}
+
+export type TextosWebview = ReturnType<typeof criarTextosWebview>;
+
+export interface LocalizacaoDaWebview extends ContextoDeIdioma {
+    readonly textos: TextosWebview;
+}
+
+export function criarLocalizacaoDaWebview(idiomaDaIde: string = vscode.env.language): LocalizacaoDaWebview {
+    return Object.freeze({
+        ...resolverContextoDeIdioma(idiomaDaIde),
+        textos: criarTextosWebview(),
+    });
+}

@@ -1,23 +1,27 @@
 // Interfaces TypeScript do Sync Antigravity
 // Arquitetura extensível de sincronização com registro de SyncItem
 
-/** Define um item de sincronização: padrão de registro */
-export interface ISyncItem {
+/** Define os dados técnicos e estáveis de um item de sincronização. */
+export interface ISyncItemDefinition {
     key: string;           // "settings" | "extensions" | "keybindings" | ...
     fileName: string;      // "settings.json", "extensions.json", ...
-    label: string;         // Nome exibido na interface
     icon: string;          // Nome do Codicon
     enabled: boolean;      // Sincroniza por padrão
 }
 
-/** Registro padrão: adicione novos tipos de dados incluindo entradas */
-export const DEFAULT_SYNC_ITEMS: ISyncItem[] = [
-    { key: "settings",    fileName: "settings.json",    label: "Configurações", icon: "settings-gear", enabled: true },
-    { key: "extensions",  fileName: "extensions.json",  label: "Extensões",     icon: "extensions",    enabled: true },
-    { key: "keybindings", fileName: "keybindings.json", label: "Atalhos",       icon: "keyboard",      enabled: true },
-    { key: "snippets",    fileName: "snippets.json",    label: "Snippets",    icon: "symbol-snippet",  enabled: true },
-    { key: "layout",      fileName: "layout.json",      label: "Layout",      icon: "layout",          enabled: true },
-];
+/** Item pronto para apresentação, com rótulo localizado somente em memória. */
+export interface ISyncItem extends ISyncItemDefinition {
+    label: string;
+}
+
+/** Registro técnico padrão; rótulos são acrescentados pela camada de localização. */
+export const DEFAULT_SYNC_ITEM_DEFINITIONS: readonly ISyncItemDefinition[] = Object.freeze([
+    { key: "settings", fileName: "settings.json", icon: "settings-gear", enabled: true },
+    { key: "extensions", fileName: "extensions.json", icon: "extensions", enabled: true },
+    { key: "keybindings", fileName: "keybindings.json", icon: "keyboard", enabled: true },
+    { key: "snippets", fileName: "snippets.json", icon: "symbol-snippet", enabled: true },
+    { key: "layout", fileName: "layout.json", icon: "layout", enabled: true },
+]);
 
 /** Metadados do perfil: armazenados em meta.json dentro da pasta do perfil */
 export interface IProfileMeta {

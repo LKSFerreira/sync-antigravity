@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { CodigoErroDaExtensao, ErroDaExtensao } from "../src/core/erro-da-extensao";
 import {
     createGlobalLayoutDocument,
     createWorkspaceLayoutsDocument,
@@ -10,6 +11,19 @@ import {
     normalizeWorkspaceLayouts,
     validateLayoutEntries,
 } from "../src/models/layout-profile";
+
+function assertErroDaExtensao(
+    operacao: () => unknown,
+    codigo: CodigoErroDaExtensao,
+    parametros: Readonly<Record<string, string | number | boolean>> = {}
+): void {
+    assert.throws(operacao, (error: unknown) => {
+        assert.ok(error instanceof ErroDaExtensao);
+        assert.equal(error.codigo, codigo);
+        assert.deepEqual(error.parametros, parametros);
+        return true;
+    });
+}
 
 test("normaliza um perfil de layout com chaves permitidas", () => {
     const global = createGlobalLayoutDocument([
@@ -34,9 +48,9 @@ test("normaliza um perfil de layout com chaves permitidas", () => {
 });
 
 test("rejeita chaves de layout que não pertencem à lista permitida", () => {
-    assert.throws(
+    assertErroDaExtensao(
         () => createGlobalLayoutDocument([{ key: "workbench.comando.perigoso", value: "true" }]),
-        /Entrada de layout inválida/,
+        "LAYOUT_ENTRADA_INVALIDA",
     );
 });
 
@@ -50,16 +64,16 @@ test("aceita chaves dinâmicas de workspace e rejeita valores ou chaves fora da 
 });
 
 test("rejeita entradas duplicadas e workspaces inválidos", () => {
-    assert.throws(
+    assertErroDaExtensao(
         () => validateLayoutEntries([
             { key: "workbench.sideBar.size", value: "200" },
             { key: "workbench.sideBar.size", value: "300" },
         ], (entry) => isAllowedGlobalLayoutKey(entry.key)),
-        /Entrada de layout inválida/,
+        "LAYOUT_ENTRADA_INVALIDA",
     );
-    assert.throws(
+    assertErroDaExtensao(
         () => createWorkspaceLayout("curto", "", []),
-        /Identificador ou nome de workspace inválido/,
+        "LAYOUT_WORKSPACE_IDENTIFICACAO_INVALIDA",
     );
 });
 
@@ -68,9 +82,83 @@ test("normaliza coleções de workspaces e rejeita duplicidades", () => {
     const second = createWorkspaceLayout("c".repeat(32), "Segundo", []);
     assert.equal(createWorkspaceLayoutsDocument([]), undefined);
     assert.equal(createWorkspaceLayoutsDocument([first, second])?.layouts.length, 2);
-    assert.throws(
+    assertErroDaExtensao(
         () => normalizeWorkspaceLayouts([first, { ...first, label: "Duplicado" }]),
-        /duplicado/,
+        "LAYOUT_WORKSPACE_DUPLICADO",
+        { workspace: first.sourceId },
     );
-    assert.throws(() => normalizeLayoutProfile({ schemaVersion: 2 }), /Versão de layout incompatível/);
+    assertErroDaExtensao(
+        () => normalizeLayoutProfile({ schemaVersion: 2 }),
+        "LAYOUT_VERSAO_INCOMPATIVEL",
+    );
+});
+
+test("rejeita limites e formas inválidas de entradas de layout", () => {
+    assertErroDaExtensao(
+        () => validateLayoutEntries(null as unknown as [], () => true),
+        "LAYOUT_QUANTIDADE_ENTRADAS_INVALIDA",
+        { limite: 128 },
+    );
+    assertErroDaExtensao(
+        () => validateLayoutEntries(
+            Array.from({ length: 129 }, (_, indice) => ({ key: `chave-${indice}`, value: "true" })),
+            () => true,
+        ),
+        "LAYOUT_QUANTIDADE_ENTRADAS_INVALIDA",
+        { limite: 128 },
+    );
+    assertErroDaExtensao(
+        () => validateLayoutEntries([null] as unknown as [], () => true),
+        "LAYOUT_ENTRADA_INVALIDA",
+    );
+    assertErroDaExtensao(
+        () => validateLayoutEntries(
+            [{ key: "workbench.sideBar.size", value: "x".repeat(16 * 1024 + 1) }],
+            (entry) => isAllowedGlobalLayoutKey(entry.key),
+        ),
+        "LAYOUT_ENTRADA_INVALIDA",
+    );
+});
+
+test("rejeita documentos e coleções de workspace incompatíveis", () => {
+    const global = createGlobalLayoutDocument([]);
+    const workspace = createWorkspaceLayout("d".repeat(32), "Projeto", []);
+
+    assertErroDaExtensao(
+        () => normalizeLayoutProfile(null),
+        "LAYOUT_DADOS_INVALIDOS",
+    );
+    assertErroDaExtensao(
+        () => normalizeLayoutProfile({
+            schemaVersion: 1,
+            global: { ...global, capturedAt: "data inválida" },
+        }),
+        "LAYOUT_DOCUMENTO_INVALIDO",
+    );
+    assertErroDaExtensao(
+        () => normalizeWorkspaceLayouts(null as unknown as []),
+        "LAYOUT_QUANTIDADE_WORKSPACES_INVALIDA",
+        { limite: 12 },
+    );
+    assertErroDaExtensao(
+        () => normalizeWorkspaceLayouts(Array.from({ length: 13 }, () => workspace)),
+        "LAYOUT_QUANTIDADE_WORKSPACES_INVALIDA",
+        { limite: 12 },
+    );
+
+    for (const workspaces of [
+        { schemaVersion: 2, capturedAt: global.capturedAt, layouts: [] },
+        { schemaVersion: 1, capturedAt: "data inválida", layouts: [] },
+        { schemaVersion: 1, capturedAt: global.capturedAt, layouts: null },
+    ]) {
+        assertErroDaExtensao(
+            () => normalizeLayoutProfile({ schemaVersion: 1, global, workspaces }),
+            "LAYOUT_DOCUMENTO_WORKSPACES_INVALIDO",
+        );
+    }
+
+    assertErroDaExtensao(
+        () => createWorkspaceLayout("e".repeat(32), "x".repeat(201), []),
+        "LAYOUT_WORKSPACE_IDENTIFICACAO_INVALIDA",
+    );
 });

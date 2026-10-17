@@ -2,8 +2,10 @@
 // Usa appDataFolder com armazenamento de perfis baseado em pastas
 
 import * as https from "https";
+import { catalogo, localizarErro } from "../localizacao/catalogo";
 import { IProfile, IProfileMeta, ISyncItem, ISyncMeta } from "../models/interfaces";
 import { MAX_REMOTE_PROFILE_FILE_BYTES } from "./profile-validator";
+import { ErroDaExtensao, ehErroDaExtensao } from "./erro-da-extensao";
 import GoogleAuth from "./google-auth";
 import Logger from "./logger";
 
@@ -14,6 +16,7 @@ const FOLDER_MIME = "application/vnd.google-apps.folder";
 const MAX_SYNC_META_BYTES = 256 * 1024;
 const MAX_PROFILE_META_BYTES = 64 * 1024;
 const MAX_SYNC_META_PROFILES = 256;
+const MAX_DRIVE_RESPONSE_BYTES = 256 * 1024;
 const VALID_SYNC_KEYS = new Set(["settings", "extensions", "keybindings", "snippets", "layout"]);
 
 interface DriveFile {
@@ -92,7 +95,10 @@ export default class GoogleDriveService {
     public async getProfile(profileName: string, syncItems: ISyncItem[], onProgress?: ProgressCallback): Promise<IProfile | null> {
         this.assertValidProfileName(profileName);
         const enabledItems = syncItems.filter(i => i.enabled);
-        const steps = ["Localizando perfil", ...enabledItems.map(i => `Baixando ${i.label}`)];
+        const steps = [
+            catalogo.progresso.localizandoPerfil(),
+            ...enabledItems.map((item) => catalogo.progresso.baixandoItem(item.label)),
+        ];
         let stepIdx = 0;
 
         // Emite primeiro todas as etapas como pendentes
@@ -111,25 +117,30 @@ export default class GoogleDriveService {
         const profile: IProfile = { profileName, data: {} };
 
         for (const item of enabledItems) {
-            const stepLabel = `Baixando ${item.label}`;
+            const stepLabel = catalogo.progresso.baixandoItem(item.label);
             onProgress?.(stepLabel, stepIdx, steps.length, "active");
 
             const matchingFiles = files.filter((candidate) => candidate.name === item.fileName);
             if (matchingFiles.length > 1) {
-                throw new Error(`O perfil contém cópias duplicadas de ${item.fileName}`);
+                throw new ErroDaExtensao("DRIVE_ARQUIVO_DUPLICADO", { arquivo: item.fileName });
             }
             const file = matchingFiles[0];
             if (file) {
                 const declaredSize = Number(file.size);
                 if (Number.isFinite(declaredSize) && declaredSize > MAX_REMOTE_PROFILE_FILE_BYTES) {
-                    throw new Error(`${item.label} remoto excede o tamanho permitido`);
+                    throw new ErroDaExtensao("DRIVE_ITEM_TAMANHO_EXCEDIDO", { item: item.label });
                 }
                 const content = await this.downloadFileContent(file.id, MAX_REMOTE_PROFILE_FILE_BYTES);
                 try {
                     profile.data[item.key] = JSON.parse(content);
                 } catch (error) {
-                    this.logger.error(`Falha ao analisar ${item.fileName} em ${profileName}`, "getProfile", false, error);
-                    throw new Error(`${item.label} remoto não contém JSON válido`);
+                    this.logger.error(
+                        catalogo.registros.drive.falhaAnalisarArquivo(item.fileName, profileName),
+                        "getProfile",
+                        false,
+                        error
+                    );
+                    throw new ErroDaExtensao("DRIVE_ITEM_JSON_INVALIDO", { item: item.label });
                 }
             }
             onProgress?.(stepLabel, stepIdx++, steps.length, "done");
@@ -138,7 +149,7 @@ export default class GoogleDriveService {
         if (enabledItems.some((item) => item.key === "extensions")) {
             const metadataFiles = files.filter((candidate) => candidate.name === "extensions-meta.json");
             if (metadataFiles.length > 1) {
-                throw new Error("O perfil contém cópias duplicadas de extensions-meta.json");
+                throw new ErroDaExtensao("DRIVE_META_EXTENSOES_DUPLICADO");
             }
             const metadataFile = metadataFiles[0];
             if (metadataFile) {
@@ -146,7 +157,7 @@ export default class GoogleDriveService {
                 try {
                     profile.data.extensionDisplayNames = JSON.parse(content);
                 } catch (error) {
-                    this.logger.warn(`Metadados de extensões inválidos em ${profileName}; os nomes legíveis serão reconstruídos`);
+                    this.logger.warn(catalogo.registros.drive.metadadosExtensoesInvalidos(profileName));
                 }
             }
         }
@@ -163,8 +174,15 @@ export default class GoogleDriveService {
         const enabledItems = syncItems.filter(i => i.enabled);
 
         const steps = isNew
-            ? ["Criando pasta", ...enabledItems.map(i => `Enviando ${i.label}`), "Salvando metadados"]
-            : [...enabledItems.map(i => `Enviando ${i.label}`), "Atualizando metadados"];
+            ? [
+                catalogo.progresso.criandoPasta(),
+                ...enabledItems.map((item) => catalogo.progresso.enviandoItem(item.label)),
+                catalogo.progresso.salvandoMetadados(),
+            ]
+            : [
+                ...enabledItems.map((item) => catalogo.progresso.enviandoItem(item.label)),
+                catalogo.progresso.atualizandoMetadados(),
+            ];
         let stepIdx = 0;
 
         // Emit all steps as pending first
@@ -175,12 +193,12 @@ export default class GoogleDriveService {
         }
 
         if (isNew) {
-            onProgress?.("Criando pasta", stepIdx, steps.length, "active");
+            onProgress?.(catalogo.progresso.criandoPasta(), stepIdx, steps.length, "active");
             folder = await this.createFolder(profile.profileName);
-            onProgress?.("Criando pasta", stepIdx++, steps.length, "done");
+            onProgress?.(catalogo.progresso.criandoPasta(), stepIdx++, steps.length, "done");
 
             for (const item of enabledItems) {
-                const label = `Enviando ${item.label}`;
+                const label = catalogo.progresso.enviandoItem(item.label);
                 onProgress?.(label, stepIdx, steps.length, "active");
                 const content = JSON.stringify(profile.data[item.key] ?? {}, null, 2);
                 await this.createFileInFolder(folder!.id, item.fileName, content);
@@ -191,7 +209,7 @@ export default class GoogleDriveService {
 
             // meta.json
             const syncKeys = enabledItems.map(i => i.key);
-            const metaLabel = "Salvando metadados";
+            const metaLabel = catalogo.progresso.salvandoMetadados();
             onProgress?.(metaLabel, stepIdx, steps.length, "active");
             await this.createFileInFolder(folder!.id, "meta.json", JSON.stringify({
                 name: profile.profileName, createdAt: now, updatedAt: now, syncKeys,
@@ -200,13 +218,13 @@ export default class GoogleDriveService {
 
             // Atualiza sync-meta.json na raiz
             await this.updateSyncMeta(profile.profileName, syncKeys);
-            this.logger.info(`Perfil criado: ${profile.profileName}`);
+            this.logger.info(catalogo.registros.drive.perfilCriado(profile.profileName));
         } else {
             const files = await this.listFolderContents(folder!.id);
             const fileMap = new Map(files.map(f => [f.name, f.id]));
 
             for (const item of enabledItems) {
-                const label = `Enviando ${item.label}`;
+                const label = catalogo.progresso.enviandoItem(item.label);
                 onProgress?.(label, stepIdx, steps.length, "active");
                 const content = JSON.stringify(profile.data[item.key] ?? {}, null, 2);
                 const existingId = fileMap.get(item.fileName);
@@ -221,7 +239,7 @@ export default class GoogleDriveService {
             await this.saveExtensionDisplayNames(folder!.id, fileMap, profile, enabledItems);
 
             // Atualiza meta.json
-            const metaLabel = "Atualizando metadados";
+            const metaLabel = catalogo.progresso.atualizandoMetadados();
             onProgress?.(metaLabel, stepIdx, steps.length, "active");
             const metaId = fileMap.get("meta.json");
             const syncKeys = enabledItems.map(i => i.key);
@@ -246,7 +264,7 @@ export default class GoogleDriveService {
 
             // Update sync-meta.json at root
             await this.updateSyncMeta(profile.profileName, syncKeys);
-            this.logger.info(`Perfil atualizado: ${profile.profileName}`);
+            this.logger.info(catalogo.registros.drive.perfilAtualizado(profile.profileName));
         }
     }
 
@@ -255,12 +273,12 @@ export default class GoogleDriveService {
         this.assertValidProfileName(profileName);
         const folder = await this.findFolder(profileName);
         if (!folder) {
-            throw new Error(`Perfil "${profileName}" não encontrado`);
+            throw new ErroDaExtensao("DRIVE_PERFIL_NAO_ENCONTRADO", { perfil: profileName });
         }
         await this.deleteFile(folder.id);
         // Atualiza sync-meta.json: remove a entrada
         await this.updateSyncMeta(profileName);
-        this.logger.info(`Perfil excluído: ${profileName}`);
+        this.logger.info(catalogo.registros.drive.perfilExcluido(profileName));
     }
 
     // ===== Explorador de dados do aplicativo =====
@@ -327,12 +345,12 @@ export default class GoogleDriveService {
             if (!file) { return {}; }
             const declaredSize = Number(file.size);
             if (Number.isFinite(declaredSize) && declaredSize > MAX_SYNC_META_BYTES) {
-                throw new Error("sync-meta.json excede o tamanho permitido");
+                throw new ErroDaExtensao("DRIVE_SYNC_META_TAMANHO_EXCEDIDO");
             }
             const raw = await this.downloadFileContent(file.id, MAX_SYNC_META_BYTES);
             return this.parseSyncMeta(raw);
         } catch (error) {
-            this.logger.warn(`sync-meta.json ignorado por segurança: ${(error as Error).message}`);
+            this.logger.warn(catalogo.registros.drive.syncMetaIgnorado(localizarErro(error)));
             return {};
         }
     }
@@ -366,7 +384,7 @@ export default class GoogleDriveService {
                 );
             }
         } catch (err) {
-            this.logger.error("Falha ao atualizar sync-meta.json", "updateSyncMeta", false, err);
+            this.logger.error(catalogo.registros.drive.falhaAtualizarSyncMeta(), "updateSyncMeta", false, err);
         }
     }
 
@@ -375,7 +393,7 @@ export default class GoogleDriveService {
     /** Impede que nomes recebidos remotamente sejam interpolados na consulta do Drive. */
     private assertValidProfileName(name: string): void {
         if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name)) {
-            throw new Error("Nome de perfil inválido");
+            throw new ErroDaExtensao("DRIVE_NOME_PERFIL_INVALIDO");
         }
     }
 
@@ -383,20 +401,20 @@ export default class GoogleDriveService {
     private parseSyncMeta(raw: string): ISyncMeta {
         const data = JSON.parse(raw) as unknown;
         if (!data || typeof data !== "object" || Array.isArray(data)) {
-            throw new Error("sync-meta.json inválido");
+            throw new ErroDaExtensao("DRIVE_SYNC_META_INVALIDO");
         }
         const entries = Object.entries(data as Record<string, unknown>);
         if (entries.length > MAX_SYNC_META_PROFILES) {
-            throw new Error("sync-meta.json contém perfis demais");
+            throw new ErroDaExtensao("DRIVE_SYNC_META_PERFIS_EXCEDIDOS");
         }
         const meta: ISyncMeta = {};
         for (const [profileName, syncKeys] of entries) {
             this.assertValidProfileName(profileName);
             if (!Array.isArray(syncKeys) || syncKeys.length === 0 || syncKeys.length > VALID_SYNC_KEYS.size) {
-                throw new Error("Itens de sincronização inválidos em sync-meta.json");
+                throw new ErroDaExtensao("DRIVE_SYNC_META_ITENS_INVALIDOS");
             }
             if (syncKeys.some((key) => typeof key !== "string" || !VALID_SYNC_KEYS.has(key)) || new Set(syncKeys).size !== syncKeys.length) {
-                throw new Error("Itens de sincronização inválidos em sync-meta.json");
+                throw new ErroDaExtensao("DRIVE_SYNC_META_ITENS_INVALIDOS");
             }
             meta[profileName] = syncKeys;
         }
@@ -417,11 +435,11 @@ export default class GoogleDriveService {
             data.syncKeys.some((key) => typeof key !== "string" || !VALID_SYNC_KEYS.has(key)) ||
             new Set(data.syncKeys).size !== data.syncKeys.length
         ) {
-            throw new Error("meta.json inválido");
+            throw new ErroDaExtensao("DRIVE_META_PERFIL_INVALIDO");
         }
         this.assertValidProfileName(data.name);
         if (data.name !== expectedProfileName) {
-            throw new Error("meta.json pertence a outro perfil");
+            throw new ErroDaExtensao("DRIVE_META_PERFIL_DIVERGENTE");
         }
         return data as IProfileMeta;
     }
@@ -583,7 +601,7 @@ export default class GoogleDriveService {
                     if (receivedBytes > maxBytes) {
                         rejectedForSize = true;
                         res.destroy();
-                        reject(new Error("Arquivo remoto excede o tamanho permitido"));
+                        reject(new ErroDaExtensao("DRIVE_ARQUIVO_REMOTO_TAMANHO_EXCEDIDO"));
                         return;
                     }
                     data += chunk;
@@ -593,17 +611,18 @@ export default class GoogleDriveService {
                         return;
                     }
                     if (res.statusCode && res.statusCode >= 400) {
-                        reject(
-                            new Error(
-                                `Erro da API do Drive ${res.statusCode}: ${data}`
-                            )
-                        );
+                        reject(new ErroDaExtensao(
+                            "DRIVE_API_FALHOU",
+                            { status: res.statusCode },
+                            { cause: new Error(data.slice(0, 1000)) }
+                        ));
                     } else {
                         resolve(data);
                     }
                 });
+                res.on("error", (error) => reject(normalizarErroDeRedeDoDrive(error)));
             });
-            req.on("error", reject);
+            req.on("error", (error) => reject(normalizarErroDeRedeDoDrive(error)));
             req.end();
         });
     }
@@ -629,22 +648,43 @@ export default class GoogleDriveService {
             };
             const req = https.request(options, (res) => {
                 let data = "";
-                res.on("data", (chunk) => (data += chunk));
+                let receivedBytes = 0;
+                let rejectedForSize = false;
+                res.on("data", (chunk) => {
+                    receivedBytes += Buffer.byteLength(chunk);
+                    if (receivedBytes > MAX_DRIVE_RESPONSE_BYTES) {
+                        rejectedForSize = true;
+                        res.destroy();
+                        reject(new ErroDaExtensao("DRIVE_ARQUIVO_REMOTO_TAMANHO_EXCEDIDO"));
+                        return;
+                    }
+                    data += chunk;
+                });
                 res.on("end", () => {
+                    if (rejectedForSize) {
+                        return;
+                    }
                     if (res.statusCode && res.statusCode >= 400) {
-                        reject(
-                            new Error(
-                                `Erro da API do Drive ${res.statusCode}: ${data}`
-                            )
-                        );
+                        reject(new ErroDaExtensao(
+                            "DRIVE_API_FALHOU",
+                            { status: res.statusCode },
+                            { cause: new Error(data.slice(0, 1000)) }
+                        ));
                     } else {
                         resolve(data);
                     }
                 });
+                res.on("error", (error) => reject(normalizarErroDeRedeDoDrive(error)));
             });
-            req.on("error", reject);
+            req.on("error", (error) => reject(normalizarErroDeRedeDoDrive(error)));
             req.write(body);
             req.end();
         });
     }
+}
+
+function normalizarErroDeRedeDoDrive(error: unknown): ErroDaExtensao {
+    return ehErroDaExtensao(error)
+        ? error
+        : new ErroDaExtensao("DRIVE_REQUISICAO_FALHOU", {}, { cause: error });
 }

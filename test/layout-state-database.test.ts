@@ -28,13 +28,51 @@ async function criarBancoTemporario(): Promise<{ directory: string; databasePath
     return { directory, databasePath };
 }
 
-test("lê e prepara uma atualização SQLite em memória sem alterar o banco original", async () => {
+async function criarBancoSemAfinidadeDeTipos(): Promise<{ directory: string; databasePath: string }> {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "sync-antigravity-types-test-"));
+    const databasePath = path.join(directory, "state.vscdb");
+    const SQL = await initSqlJs({
+        locateFile: (fileName) => path.join(process.cwd(), "node_modules", "sql.js", "dist", fileName),
+    });
+    const database = new SQL.Database();
+    database.run("CREATE TABLE ItemTable (key PRIMARY KEY, value)");
+    database.run("INSERT INTO ItemTable(key, value) VALUES (?, ?)", ["workbench.sideBar.size", 220]);
+    database.run("INSERT INTO ItemTable(key, value) VALUES (?, ?)", ["workbench.view.explorer.state", 1]);
+    await writeFile(databasePath, database.export());
+    database.close();
+    return { directory, databasePath };
+}
+
+async function criarBancoQueReverteAutomaticamente(): Promise<{ directory: string; databasePath: string }> {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "sync-antigravity-rollback-test-"));
+    const databasePath = path.join(directory, "state.vscdb");
+    const SQL = await initSqlJs({
+        locateFile: (fileName) => path.join(process.cwd(), "node_modules", "sql.js", "dist", fileName),
+    });
+    const database = new SQL.Database();
+    database.run("CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT)");
+    database.run("INSERT INTO ItemTable(key, value) VALUES (?, ?)", ["workbench.sideBar.size", "220"]);
+    database.run(
+        "CREATE TRIGGER impedir_alteracao BEFORE UPDATE ON ItemTable " +
+        "BEGIN SELECT RAISE(ROLLBACK, 'alteração bloqueada'); END",
+    );
+    await writeFile(databasePath, database.export());
+    database.close();
+    return { directory, databasePath };
+}
+
+async function prepararRuntimeSqlJs(): Promise<{ wasmDeTeste: string; javascriptDeTeste: string }> {
     const wasmDeOrigem = path.join(process.cwd(), "node_modules", "sql.js", "dist", "sql-wasm.wasm");
     const wasmDeTeste = path.join(__dirname, "..", "src", "core", "sql-wasm.wasm");
     const javascriptDeOrigem = path.join(process.cwd(), "node_modules", "sql.js", "dist", "sql-wasm.js");
     const javascriptDeTeste = path.join(__dirname, "..", "src", "core", "sql-wasm.js");
     await copyFile(wasmDeOrigem, wasmDeTeste);
     await copyFile(javascriptDeOrigem, javascriptDeTeste);
+    return { wasmDeTeste, javascriptDeTeste };
+}
+
+test("lê e prepara uma atualização SQLite em memória sem alterar o banco original", async () => {
+    const { wasmDeTeste, javascriptDeTeste } = await prepararRuntimeSqlJs();
 
     const { directory, databasePath } = await criarBancoTemporario();
     try {
@@ -54,6 +92,42 @@ test("lê e prepara uma atualização SQLite em memória sem alterar o banco ori
         );
 
         assert.ok(updated.byteLength > 0);
+        assert.deepEqual(await readFile(databasePath), original);
+    } finally {
+        await rm(directory, { recursive: true, force: true });
+        await rm(wasmDeTeste, { force: true });
+        await rm(javascriptDeTeste, { force: true });
+    }
+});
+
+test("ignora valores SQLite que não sejam strings", async () => {
+    const { wasmDeTeste, javascriptDeTeste } = await prepararRuntimeSqlJs();
+    const { directory, databasePath } = await criarBancoSemAfinidadeDeTipos();
+
+    try {
+        assert.deepEqual(await readGlobalLayoutEntries(databasePath), []);
+        assert.deepEqual(await readWorkspaceLayoutEntries(databasePath), []);
+    } finally {
+        await rm(directory, { recursive: true, force: true });
+        await rm(wasmDeTeste, { force: true });
+        await rm(javascriptDeTeste, { force: true });
+    }
+});
+
+test("preserva o erro original quando o SQLite já reverteu a transação", async () => {
+    const { wasmDeTeste, javascriptDeTeste } = await prepararRuntimeSqlJs();
+    const { directory, databasePath } = await criarBancoQueReverteAutomaticamente();
+    const original = await readFile(databasePath);
+
+    try {
+        await assert.rejects(
+            applyLayoutEntries(
+                databasePath,
+                [{ key: "workbench.sideBar.size", value: "340" }],
+                (entry) => isAllowedGlobalLayoutKey(entry.key),
+            ),
+            /alteração bloqueada/,
+        );
         assert.deepEqual(await readFile(databasePath), original);
     } finally {
         await rm(directory, { recursive: true, force: true });

@@ -33,6 +33,9 @@ jobs:
       - name: Compilar e testar
         run: npm test
 
+      - name: Validar catálogos de localização
+        run: npm run l10n:check
+
       - name: Gerar bundle de produção
         env:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
@@ -51,6 +54,13 @@ jobs:
           grep -Fx 'extension/dist/sql-wasm.wasm' artifacts/vsix-files.txt
           grep -Fx 'extension/dist/sql-wasm.js' artifacts/vsix-files.txt
           grep -Fx 'extension/dist/layout-replacement-helper.js' artifacts/vsix-files.txt
+          grep -Fx 'extension/dist/webview/localizacao.js' artifacts/vsix-files.txt
+          grep -Fx 'extension/package.nls.json' artifacts/vsix-files.txt
+          grep -Fx 'extension/package.nls.pt.json' artifacts/vsix-files.txt
+          grep -Fx 'extension/package.nls.pt-br.json' artifacts/vsix-files.txt
+          grep -Fx 'extension/l10n/bundle.l10n.json' artifacts/vsix-files.txt
+          grep -Fx 'extension/l10n/bundle.l10n.pt.json' artifacts/vsix-files.txt
+          grep -Fx 'extension/l10n/bundle.l10n.pt-br.json' artifacts/vsix-files.txt
           ! grep -E '(^|/)(\.env|client_secret_|preview-login-success\.html|icon_original\.png)' artifacts/vsix-files.txt
           ! grep -E '(^|/)(\.agents|\.metadocs)(/|$)' artifacts/vsix-files.txt
 

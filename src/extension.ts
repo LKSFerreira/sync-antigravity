@@ -7,30 +7,34 @@ import GoogleAuth from "./core/google-auth";
 import GoogleDriveService from "./core/google-drive";
 import SyncController from "./core/sync-controller";
 import DashboardProvider from "./providers/dashboard-provider";
+import { catalogo, localizarErro } from "./localizacao/catalogo";
+import { resolverContextoDeIdioma } from "./localizacao/idioma";
 
 export let logger: Logger;
 let statusBarItem: vscode.StatusBarItem;
 
 export async function activate(ctx: vscode.ExtensionContext) {
     try {
+        const contextoDeIdioma = resolverContextoDeIdioma(vscode.env.language);
+
         // Inicializa o Logger
         logger = new Logger();
-        logger.info("Ativação da extensão iniciada");
+        logger.info(catalogo.logs.ativacaoIniciada());
 
         // Compatível somente com Antigravity IDE 2.0+
         if (vscode.env.appName !== "Antigravity IDE") {
+            const continuarMesmoAssim = catalogo.compatibilidade.continuarMesmoAssim();
+            const fechar = catalogo.geral.fechar();
             vscode.window.showWarningMessage(
-                `Sync Antigravity foi projetado exclusivamente para o Antigravity IDE. ` +
-                `Você está usando "${vscode.env.appName}". ` +
-                `Alguns recursos podem não funcionar corretamente.`,
-                "Continuar mesmo assim",
-                "Fechar"
+                catalogo.compatibilidade.avisoIdeIncompativel(vscode.env.appName),
+                continuarMesmoAssim,
+                fechar
             ).then((choice) => {
-                if (choice !== "Continuar mesmo assim") {
+                if (choice !== continuarMesmoAssim) {
                     deactivate(true);
                 }
             });
-            logger.warn(`IDE diferente do Antigravity detectada: ${vscode.env.appName}`);
+            logger.warn(catalogo.logs.ideIncompativel(vscode.env.appName));
         }
 
         // Inicializa a barra de status
@@ -45,7 +49,7 @@ export async function activate(ctx: vscode.ExtensionContext) {
         const controller = await SyncController.initialize(logger, ctx);
         if (!controller) {
             logger.error(
-                "Falha ao inicializar o Sync Antigravity",
+                catalogo.logs.falhaInicializacao(),
                 "activate",
                 true
             );
@@ -67,10 +71,10 @@ export async function activate(ctx: vscode.ExtensionContext) {
             const authenticated = await auth.isAuthenticated();
             if (authenticated) {
                 statusBarItem.text = "$(sync) Sync Antigravity";
-                statusBarItem.tooltip = "Sync Antigravity: sessão iniciada - clique para abrir o painel";
+                statusBarItem.tooltip = catalogo.status.sessaoIniciada();
             } else {
-                statusBarItem.text = "$(sync~spin) Sync Antigravity - início de sessão necessário";
-                statusBarItem.tooltip = "Clique para abrir o painel e iniciar sessão";
+                statusBarItem.text = `$(sync~spin) ${catalogo.status.inicioNecessario()}`;
+                statusBarItem.tooltip = catalogo.status.abrirParaIniciar();
             }
         }
         await updateStatusBar();
@@ -88,28 +92,34 @@ export async function activate(ctx: vscode.ExtensionContext) {
                 try {
                     const backup = await controller.getLatestLayoutBackup();
                     if (!backup) {
-                        vscode.window.showInformationMessage("Nenhum backup de layout está disponível");
+                        vscode.window.showInformationMessage(catalogo.layout.nenhumBackup());
                         return;
                     }
+                    const dataDoBackup = new Intl.DateTimeFormat(contextoDeIdioma.localidade, {
+                        dateStyle: "short",
+                        timeStyle: "medium",
+                    }).format(new Date(backup.createdAt));
+                    const restaurarBackup = catalogo.layout.restaurarBackup();
                     const choice = await vscode.window.showWarningMessage(
-                        `Restaurar o backup de layout de ${new Date(backup.createdAt).toLocaleString("pt-BR")}?`,
+                        catalogo.layout.confirmarRestauracao(dataDoBackup),
                         { modal: true },
-                        "Restaurar backup"
+                        restaurarBackup
                     );
-                    if (choice !== "Restaurar backup") {
+                    if (choice !== restaurarBackup) {
                         return;
                     }
 
                     await controller.rollbackLatestLayoutBackup();
+                    const recarregarAgora = catalogo.layout.recarregarAgora();
                     const reload = await vscode.window.showInformationMessage(
-                        "Backup de layout restaurado. Recarregue a janela para aplicar a organização visual.",
-                        "Recarregar agora"
+                        catalogo.layout.restaurado(),
+                        recarregarAgora
                     );
-                    if (reload === "Recarregar agora") {
+                    if (reload === recarregarAgora) {
                         await vscode.commands.executeCommand("workbench.action.reloadWindow");
                     }
                 } catch (error) {
-                    logger.error("Falha ao restaurar backup de layout", "rollbackLayout", true, error);
+                    logger.error(catalogo.layout.falhaRestauracao(), "rollbackLayout", true, error);
                 }
             }
         );
@@ -124,9 +134,9 @@ export async function activate(ctx: vscode.ExtensionContext) {
         // Fecha painéis órfãos da sessão anterior da extensão
         closeOrphanedPanels();
 
-        logger.info("Extensão ativada com sucesso", false, "activate");
+        logger.info(catalogo.logs.ativacaoConcluida(), false, "activate");
     } catch (error) {
-        logger.error(`${error}`, "activate", false, error);
+        logger?.error(localizarErro(error, catalogo.logs.falhaInicializacao()), "activate", false, error);
     }
 }
 
@@ -138,7 +148,7 @@ function closeOrphanedPanels() {
                 const viewType = (tab.input as any).viewType as string;
                 if (viewType?.includes("antigravitysync.dashboard")) {
                     vscode.window.tabGroups.close(tab).then(
-                        () => logger.info("Aba órfã do painel fechada"),
+                        () => logger.info(catalogo.logs.abaOrfaFechada()),
                         () => { /* ignora */ }
                     );
                 }
@@ -156,7 +166,7 @@ export async function ensureAuth(auth: GoogleAuth): Promise<boolean> {
 }
 
 export function deactivate(preserveLogger: boolean = false) {
-    logger?.info("Extensão desativada");
+    logger?.info(catalogo.logs.extensaoDesativada());
     statusBarItem?.dispose();
     if (!preserveLogger) {
         logger?.dispose();

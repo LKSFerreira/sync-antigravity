@@ -2,6 +2,21 @@
 
 > 🇺🇸 **Prefer to read in English? See the [English changelog](CHANGELOG.md).**
 
+## [0.8.0] - 2026-10-17
+
+### Adicionado
+
+- Localização automática da interface conforme o idioma da IDE: qualquer localidade de português usa pt-BR, enquanto inglês e idiomas não suportados usam inglês.
+- Localização do manifesto da extensão, comandos, configurações, barra de status, painel, progresso de sincronização, mensagens de validação, registros e páginas OAuth no navegador.
+- Verificações automatizadas de localização para chaves ausentes, placeholders incompatíveis, aliases genéricos de português, HTML proibido e arquivos obrigatórios no VSIX.
+- Ampliação da cobertura de regressão para validação de perfis remotos, compatibilidade de layout, descoberta de extensões instaladas, transações SQLite e substituição adiada do layout.
+
+### Alterado
+
+- As definições de sincronização e prévias de perfil agora transportam dados técnicos estáveis, em vez de rótulos persistidos ou frases pré-formatadas dependentes de idioma.
+- Falhas de validação de domínio agora usam códigos de erro estáveis e parâmetros seguros, traduzidos somente na fronteira de apresentação.
+- A verificação automatizada agora exige pelo menos 95% de cobertura de linhas, statements e funções e 90% de branches nos módulos críticos medidos.
+
 ## [0.7.19] - 2026-10-15
 
 ### Adicionado

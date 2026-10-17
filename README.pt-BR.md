@@ -7,6 +7,8 @@
 
 Sincronize configurações, extensões, atalhos, snippets e layout do **Antigravity IDE** entre dispositivos usando o **Google Drive**.
 
+A interface acompanha automaticamente o idioma da IDE. Qualquer localidade de português usa pt-BR; inglês e idiomas ainda não suportados usam inglês.
+
 Saiba como instalar e usar a extensão no [site do Sync Antigravity](https://sync.semsusto.app/).
 
 > **Fork independente:** mantido por [LKSFerreira](https://github.com/LKSFerreira), derivado de [thotam/antigravity-sync](https://github.com/thotam/antigravity-sync) e distribuído sob a licença MIT.
