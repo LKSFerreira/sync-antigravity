@@ -6,4 +6,10 @@ contact_links:
   - name: "Repositório Upstream (Histórico)"
     url: "https://github.com/thotam/antigravity-sync"
     about: "Projeto original do qual este fork independente foi derivado."
+  - name: "Política de Privacidade / Privacy Policy"
+    url: "https://sync.semsusto.app/privacidade/"
+    about: "Consulte como os dados e as credenciais são tratados pela extensão."
+  - name: "Termos de Serviço / Terms of Service"
+    url: "https://sync.semsusto.app/termos/"
+    about: "Consulte as condições de uso do Sync Antigravity."
 

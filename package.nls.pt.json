@@ -1,7 +1,7 @@
 {
     "extensao.titulo": "Sync Antigravity - Sincronização de Configurações e Extensões (Antigravity Sync)",
     "extensao.nome": "Sync Antigravity",
-    "extensao.descricao": "Sincronização completa de configurações, extensões, atalhos, snippets e layout para o Antigravity IDE via Google Drive (Antigravity Sync).",
+    "extensao.descricao": "Sincronização completa de configurações, extensões, atalhos, snippets e layout para o Antigravity IDE via Google Drive (Antigravity Sync). Backup e restauração na nuvem.",
     "comando.abrirPainel.titulo": "Abrir painel",
     "comando.reverterLayout.titulo": "Reverter último layout",
     "configuracao.extensoesExcluidas.descricao": "IDs de extensões a excluir da sincronização"
