@@ -654,6 +654,38 @@ body {
     overscroll-behavior: contain;
 }
 
+.modal-body:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: -2px;
+}
+
+.modal-extension-section {
+    margin-top: 14px;
+}
+
+.modal-extension-title {
+    margin: 0;
+    color: var(--vscode-foreground);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.modal-extension-list {
+    margin: 6px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.modal-extension-item {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--vscode-panel-border, rgba(255, 255, 255, 0.06));
+    overflow-wrap: anywhere;
+}
+
+.modal-extension-item:last-child {
+    border-bottom: 0;
+}
+
 .modal-body::-webkit-scrollbar {
     width: 6px;
 }

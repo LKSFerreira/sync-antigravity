@@ -5,8 +5,17 @@
     // @ts-ignore
     const vscode = acquireVsCodeApi();
     const localizacao = globalThis.__SYNC_ANTIGRAVITY_L10N__;
+    const diagnosticosLocalizacao = new Set();
+    const registrarDiagnosticoLocalizacao = (diagnostico) => {
+        const identificador = `${diagnostico.tipo}:${diagnostico.chave}:${diagnostico.parametro || ""}`;
+        if (diagnosticosLocalizacao.has(identificador)) {
+            return;
+        }
+        diagnosticosLocalizacao.add(identificador);
+        console.warn("[Sync Antigravity] Contrato de localização incompleto.", diagnostico);
+    };
     const { t, tp, comparador, formatadorDecimal } = globalThis.SyncAntigravityLocalizacao
-        .criarLocalizador(localizacao);
+        .criarLocalizador(localizacao, registrarDiagnosticoLocalizacao);
 
     // === Elementos do DOM ===
     const loginSection = document.getElementById("login-section");
@@ -34,7 +43,7 @@
 
     /**
      * Show a confirm modal dialog
-     * @param {object} opts - { title, message, icon, confirmLabel, cancelLabel, variant }
+     * @param {object} opts - { title, message, icon, confirmLabel, cancelLabel, variant, preencherConteudo }
      * @returns {Promise<boolean>}
      */
     function showConfirm(opts) {
@@ -48,7 +57,7 @@
                         <span class="codicon codicon-${opts.icon || "question"}"></span>
                         <span>${escapeHtml(opts.title || t("comum.confirmar"))}</span>
                     </div>
-                    <div class="modal-body" style="white-space: pre-wrap;">${escapeHtml(opts.message || t("comum.temCerteza"))}</div>
+                    <div class="modal-body"${opts.preencherConteudo ? "" : ' style="white-space: pre-wrap;"'}>${escapeHtml(opts.message || t("comum.temCerteza"))}</div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" data-modal="cancel">
                             ${escapeHtml(opts.cancelLabel || t("comum.cancelar"))}
@@ -59,6 +68,12 @@
                     </div>
                 </div>
             `;
+
+            if (typeof opts.preencherConteudo === "function") {
+                const corpo = overlay.querySelector(".modal-body");
+                corpo.tabIndex = 0;
+                opts.preencherConteudo(corpo);
+            }
 
             function close(result) {
                 overlay.classList.add("modal-out");
@@ -1161,16 +1176,37 @@
                 const extensionLabel = (extension) => extension.displayName || t("extensoes.semNome");
                 const installList = installEntries.map((extension) => extension.id);
                 const deleteList = deleteEntries.map((extension) => extension.id);
-                let details = `${t("extensoes.resumo", { instalar: installList.length, remover: deleteList.length })}\n\n`;
-                if (installList.length > 0) {
-                    details += `📥 ${t("extensoes.instalarLista")}\n${installEntries.map((extension) => `  • ${extensionLabel(extension)}`).join("\n")}\n\n`;
-                }
-                if (deleteList.length > 0) {
-                    details += `🗑️ ${t("extensoes.removerLista")}\n${deleteEntries.map((extension) => `  • ${extensionLabel(extension)}`).join("\n")}`;
-                }
+                const criarSecaoExtensoes = (titulo, extensoes) => {
+                    const secao = document.createElement("section");
+                    secao.className = "modal-extension-section";
+                    const cabecalho = document.createElement("h3");
+                    cabecalho.className = "modal-extension-title";
+                    cabecalho.textContent = titulo;
+                    const lista = document.createElement("ul");
+                    lista.className = "modal-extension-list";
+                    lista.setAttribute("aria-label", titulo);
+                    for (const extensao of extensoes) {
+                        const item = document.createElement("li");
+                        item.className = "modal-extension-item";
+                        item.textContent = extensionLabel(extensao);
+                        lista.appendChild(item);
+                    }
+                    secao.append(cabecalho, lista);
+                    return secao;
+                };
+                const preencherConteudo = (corpo) => {
+                    if (installEntries.length > 0) {
+                        corpo.appendChild(criarSecaoExtensoes(t("extensoes.instalarLista"), installEntries));
+                    }
+                    if (deleteEntries.length > 0) {
+                        corpo.appendChild(criarSecaoExtensoes(t("extensoes.removerLista"), deleteEntries));
+                    }
+                };
+                const details = t("extensoes.resumo", { instalar: installList.length, remover: deleteList.length });
                 showConfirm({
                     title: t("extensoes.titulo"),
                     message: details,
+                    preencherConteudo,
                     icon: "extensions",
                     confirmLabel: t("comum.aplicar"),
                     cancelLabel: t("extensoes.pular"),

@@ -10,7 +10,7 @@
 })(typeof globalThis === "object" ? globalThis : this, function criarApi() {
     "use strict";
 
-    function criarLocalizador(localizacao) {
+    function criarLocalizador(localizacao, registrarDiagnostico = () => undefined) {
         if (!localizacao || typeof localizacao !== "object" || !localizacao.textos) {
             throw new TypeError("O contrato de localização da webview é inválido");
         }
@@ -22,11 +22,16 @@
                 valor = valor.message;
             }
             if (typeof valor !== "string") {
+                registrarDiagnostico({ tipo: "chave-ausente", chave });
                 return `[${chave}]`;
             }
-            return valor.replace(/\{([a-zA-Z0-9_]+)\}/g, (trecho, nome) =>
-                Object.prototype.hasOwnProperty.call(parametros, nome) ? String(parametros[nome]) : trecho
-            );
+            return valor.replace(/\{([a-zA-Z0-9_]+)\}/g, (trecho, nome) => {
+                if (Object.prototype.hasOwnProperty.call(parametros, nome)) {
+                    return String(parametros[nome]);
+                }
+                registrarDiagnostico({ tipo: "parametro-ausente", chave, parametro: nome });
+                return trecho;
+            });
         }
 
         function tp(chaveSingular, chavePlural, quantidade, parametros = {}) {
