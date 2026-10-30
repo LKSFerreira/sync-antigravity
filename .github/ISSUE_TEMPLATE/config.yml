@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "Documentação Oficial / Official Documentation"
+    url: "https://sync.semsusto.app/"
+    about: "Acesse tutoriais, política de privacidade e guia de primeiros passos da extensão."
+  - name: "Repositório Upstream (Histórico)"
+    url: "https://github.com/thotam/antigravity-sync"
+    about: "Projeto original do qual este fork independente foi derivado."
+

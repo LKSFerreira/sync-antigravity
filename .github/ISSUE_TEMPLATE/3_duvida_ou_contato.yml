@@ -1,0 +1,44 @@
+name: "Dúvida, Suporte ou Contato / Question & Contact"
+description: "Tire dúvidas sobre escopos OAuth, Google Drive, configuração inicial ou fale com o mantenedor."
+title: "[Dúvida / Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 🌐 Idiomas Aceitos / Accepted Languages
+        > **pt-BR:** Você pode enviar sua dúvida em **Português do Brasil (`pt-BR`)** ou em **Inglês (`en`)**.
+        > 
+        > **en:** You may submit your question in **English (`en`)** or **Brazilian Portuguese (`pt-BR`)**.
+
+  - type: dropdown
+    id: assunto
+    attributes:
+      label: "Assunto Principal / Main Topic"
+      description: "Selecione a categoria mais relacionada à sua dúvida."
+      options:
+        - "Autenticação e Permissões do Google Drive"
+        - "Sincronização de Layout e Workspaces"
+        - "Instalação e Empacotamento VSIX"
+        - "Configuração Inicial no Antigravity IDE"
+        - "Outro assunto / Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: mensagem
+    attributes:
+      label: "Detalhes da Dúvida ou Mensagem / Details or Message"
+      description: "Explique com clareza a sua dúvida ou necessidade de suporte."
+      placeholder: "Escreva sua dúvida aqui..."
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: seguranca
+    attributes:
+      label: "Segurança / Security"
+      options:
+        - label: "Confirmo que não incluí credenciais de API, tokens secretos ou informações sensíveis nesta mensagem."
+          required: true
+

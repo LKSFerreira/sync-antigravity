@@ -1,0 +1,47 @@
+name: "Sugestão de Recurso / Feature Request"
+description: "Proponha uma nova funcionalidade, melhoria de usabilidade ou nova capacidade de sincronização."
+title: "[Sugestão / Feature]: "
+labels: ["enhancement", "sugestao"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 🌐 Idiomas Aceitos / Accepted Languages
+        > **pt-BR:** Você pode sugerir esta melhoria em **Português do Brasil (`pt-BR`)** ou em **Inglês (`en`)**.
+        > 
+        > **en:** You may suggest this improvement in **English (`en`)** or **Brazilian Portuguese (`pt-BR`)**.
+
+  - type: textarea
+    id: motivacao
+    attributes:
+      label: "Problema ou Necessidade que Motiva a Sugestão / Problem or Need Behind the Request"
+      description: "Qual desafio, limitação ou necessidade atual esta sugestão visa resolver?"
+      placeholder: "Ex: Gostaria de poder sincronizar temas e configurações específicas de forma seletiva..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solucao-proposta
+    attributes:
+      label: "Solução Proposta / Proposed Solution"
+      description: "Descreva em detalhes como você imagina o funcionamento desse recurso ou melhoria."
+      placeholder: "Ex: Adicionar uma opção no painel da webview para..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: "Alternativas ou Soluções de Contorno / Alternatives Considered"
+      description: "Existem outras formas ou soluções alternativas que você já experimentou?"
+    validations:
+      required: false
+
+  - type: textarea
+    id: contexto-adicional
+    attributes:
+      label: "Contexto Adicional / Additional Context"
+      description: "Adicione links, exemplos de outras extensões, mockups visuais ou qualquer outra informação relevante."
+    validations:
+      required: false
+

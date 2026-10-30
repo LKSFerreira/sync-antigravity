@@ -1,0 +1,93 @@
+name: "Relato de Defeito / Bug Report"
+description: "Informe um erro, falha ou comportamento inesperado na extensão."
+title: "[Bug]: "
+labels: ["bug", "triagem-pendente"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 🌐 Idiomas Aceitos / Accepted Languages
+        > **pt-BR:** Você pode descrever este problema em **Português do Brasil (`pt-BR`)** ou em **Inglês (`en`)**.
+        > 
+        > **en:** You may describe this issue in **English (`en`)** or **Brazilian Portuguese (`pt-BR`)**.
+
+  - type: textarea
+    id: descricao
+    attributes:
+      label: "Descrição do Problema / Problem Description"
+      description: "Explique claramente o que aconteceu de forma concisa e objetiva."
+      placeholder: "Ex: Ao clicar em 'Aplicar perfil', o botão exibiu o texto [comum.aplicar] e a lista de extensões não permitiu rolagem."
+    validations:
+      required: true
+
+  - type: textarea
+    id: passos-reproducao
+    attributes:
+      label: "Passos para Reproduzir / Steps to Reproduce"
+      description: "Passo a passo numerado para que possamos reproduzir exatamente a mesma falha."
+      placeholder: |
+        1. Abra o painel com 'Sync Antigravity: Abrir painel'
+        2. Clique em 'Aplicar' no perfil existente
+        3. Observe que...
+    validations:
+      required: true
+
+  - type: textarea
+    id: comportamento-esperado
+    attributes:
+      label: "Comportamento Esperado / Expected Behavior"
+      description: "O que você esperava que acontecesse em vez da falha ocorrida."
+      placeholder: "Ex: O botão deveria exibir 'Aplicar' e o modal deveria apresentar uma barra de rolagem vertical visível."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: sistema-operacional
+    attributes:
+      label: "Sistema Operacional / Operating System"
+      description: "Selecione a plataforma onde o erro foi observado."
+      options:
+        - "Windows 11 / 10"
+        - "macOS (Apple Silicon - M1/M2/M3/M4)"
+        - "macOS (Intel)"
+        - "Linux (Ubuntu / Debian / derivado)"
+        - "Linux (Arch / Fedora / outro)"
+    validations:
+      required: true
+
+  - type: input
+    id: versoes
+    attributes:
+      label: "Versões do Ambiente / Environment Versions"
+      description: "Informe a versão da Antigravity IDE e da extensão Sync Antigravity."
+      placeholder: "Antigravity IDE v1.9x / Sync Antigravity v0.8.x"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Registros e Saída / Logs & Terminal Output"
+      description: "Cole aqui as mensagens do canal de saída 'Sync Antigravity' (Aba Saída / Output) ou do console de desenvolvedor da IDE."
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: evidencias
+    attributes:
+      label: "Capturas de Tela ou Evidências Visuais / Screenshots or Visual Proofs"
+      description: "Arraste e solte imagens ou GIFs que ajudem a ilustrar o comportamento inesperado."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirmacoes
+    attributes:
+      label: "Verificações Prévias / Preliminary Checks"
+      options:
+        - label: "Confirmo que não incluí credenciais, senhas, tokens OAuth ou dados confidenciais neste relato."
+          required: true
+        - label: "Pesquisei nas issues abertas e não encontrei relato idêntico para este problema."
+          required: true
+
