@@ -17,7 +17,10 @@
 
         const localidade = localizacao.localidade || "en-US";
         function t(chave, parametros = {}) {
-            const valor = chave.split(".").reduce((atual, parte) => atual?.[parte], localizacao.textos);
+            let valor = chave.split(".").reduce((atual, parte) => atual?.[parte], localizacao.textos);
+            if (valor && typeof valor === "object" && typeof valor.message === "string") {
+                valor = valor.message;
+            }
             if (typeof valor !== "string") {
                 return `[${chave}]`;
             }

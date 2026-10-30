@@ -54,8 +54,13 @@ function validarCatalogo(base, traducao, nome) {
 
     for (const chave of chavesBase) {
         const mensagemBase = obterMensagem(base[chave]);
-        const mensagemTraduzida = obterMensagem(traducao[chave]);
-        assert.equal(typeof mensagemTraduzida, "string", `${nome}: ${chave} não contém texto`);
+        const valorTraduzido = traducao[chave];
+        assert.equal(
+            typeof valorTraduzido,
+            "string",
+            `${nome}: a chave "${chave}" deve ser uma string escalar no catálogo traduzido, mas foi encontrado ${typeof valorTraduzido}`
+        );
+        const mensagemTraduzida = valorTraduzido;
         assert.notEqual(mensagemTraduzida.trim(), "", `${nome}: ${chave} está vazia`);
         assert.doesNotMatch(
             mensagemTraduzida,

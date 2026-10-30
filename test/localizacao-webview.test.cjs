@@ -47,3 +47,17 @@ test("usa inglês como localidade defensiva quando o contrato não a informa", (
 
     assert.equal(formatadorDecimal.format(1.5), "1.5");
 });
+
+test("extrai mensagem defensivamente quando o valor é um objeto com propriedade message", () => {
+    const contrato = {
+        localidade: "pt-BR",
+        textos: {
+            comum: {
+                aplicar: { message: "Aplicar", comment: ["Comentário"] },
+            },
+        },
+    };
+    const { t } = criarLocalizador(contrato);
+
+    assert.equal(t("comum.aplicar"), "Aplicar");
+});
