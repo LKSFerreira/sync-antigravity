@@ -2,6 +2,26 @@
 
 > 🇧🇷 **Prefere ler em português? Acesse o [changelog em pt-BR](CHANGELOG.pt-BR.md).**
 
+## [0.9.1] - 2026-10-30
+
+### Added
+
+- Error log redaction and sanitization module (`src/core/registro-erro.ts`) to mask authentication tokens, sensitive authorization headers, and URL query parameters in diagnostic outputs.
+- Structured diagnostics in the webview localization helper (`src/webview/localizacao.js`) for tracking missing keys and parameters without leaking synchronization payloads.
+- Direct links to Privacy Policy and Terms of Use in GitHub Issue Forms configuration (`.github/ISSUE_TEMPLATE/config.yml`).
+- Automated test suites for localization contracts (`test/catalogo-contratos.test.cjs`) and sensitive log redaction (`test/registro-erro.test.ts`).
+
+### Changed
+
+- Semantic restructuring of the extension list in the restore profile preview modal (`src/webview/dashboard.js`, `src/webview/dashboard.css`) using native list markup (`<ul>`, `<li>`) for assistive technology and accessibility.
+- Injected locale-aware comparator for installed extension sorting (`src/core/installed-extensions.ts`) respecting the active IDE locale with deterministic ID tie-breaking.
+
+### Fixed
+
+- Dynamic localization of progress titles during profile creation and application in `src/providers/dashboard-provider.ts` via `catalogo.painel.criandoPerfil` and `catalogo.painel.aplicandoPerfil`.
+- Sanitized presentation fallback for unstructured runtime errors, preventing technical trace leakage in the user interface.
+- Complete description harmonization in the Portuguese localization manifest (`package.nls.pt-br.json`).
+
 ## [0.8.1] - 2026-10-30
 
 ### Added

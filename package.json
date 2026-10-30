@@ -2,7 +2,7 @@
   "name": "sync-antigravity",
   "displayName": "%extensao.titulo%",
   "description": "%extensao.descricao%",
-  "version": "0.8.1",
+  "version": "0.9.1",
   "publisher": "lksferreira",
   "author": {
     "name": "LKSFerreira"
@@ -91,9 +91,9 @@
     "package": "webpack --mode production --devtool hidden-source-map",
     "package:vsix": "npm run l10n:check && npm run package && vsce package --out artifacts/sync-antigravity.vsix",
     "openvsx:create-namespace": "ovsx create-namespace lksferreira",
-    "test:unit": "npm run compile:test && node --test out/test/profile-validator.test.js out/test/layout-profile.test.js out/test/installed-extensions.test.js out/test/localizacao.test.js test/localizacao-webview.test.cjs",
+    "test:unit": "npm run compile:test && node --test out/test/profile-validator.test.js out/test/layout-profile.test.js out/test/installed-extensions.test.js out/test/localizacao.test.js out/test/registro-erro.test.js test/localizacao-webview.test.cjs test/catalogo-contratos.test.cjs",
     "test:integration": "npm run compile:test && node --test out/test/layout-state-database.test.js out/test/layout-replacement-helper.test.js",
-    "test": "npm run compile:test && c8 --all --check-coverage --lines 95 --functions 95 --branches 90 --statements 95 --include=out/src/core/erro-da-extensao.js --include=out/src/core/profile-validator.js --include=out/src/models/layout-profile.js --include=out/src/core/layout-state-database.js --include=out/src/core/installed-extensions.js --include=out/src/localizacao/idioma.js --include=out/src/localizacao/serializacao-webview.js --include=src/core/layout-replacement-helper.js --include=src/webview/localizacao.js node --test out/test/profile-validator.test.js out/test/layout-profile.test.js out/test/layout-state-database.test.js out/test/layout-replacement-helper.test.js out/test/installed-extensions.test.js out/test/localizacao.test.js test/localizacao-webview.test.cjs"
+    "test": "npm run compile:test && c8 --all --check-coverage --lines 95 --functions 95 --branches 90 --statements 95 --include=out/src/core/erro-da-extensao.js --include=out/src/core/profile-validator.js --include=out/src/models/layout-profile.js --include=out/src/core/layout-state-database.js --include=out/src/core/installed-extensions.js --include=out/src/core/registro-erro.js --include=out/src/localizacao/idioma.js --include=out/src/localizacao/serializacao-webview.js --include=src/core/layout-replacement-helper.js --include=src/webview/localizacao.js node --test out/test/profile-validator.test.js out/test/layout-profile.test.js out/test/layout-state-database.test.js out/test/layout-replacement-helper.test.js out/test/installed-extensions.test.js out/test/localizacao.test.js out/test/registro-erro.test.js test/localizacao-webview.test.cjs test/catalogo-contratos.test.cjs"
   },
   "devDependencies": {
     "@types/node": "20.19.37",

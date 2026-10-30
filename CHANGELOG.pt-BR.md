@@ -2,6 +2,26 @@
 
 > 🇺🇸 **Prefer to read in English? See the [English changelog](CHANGELOG.md).**
 
+## [0.9.1] - 2026-10-30
+
+### Adicionado
+
+- Módulo de redação e sanitização de registros (`src/core/registro-erro.ts`) para mascarar tokens de autenticação, cabeçalhos sensíveis e parâmetros de URL em diagnósticos.
+- Diagnósticos estruturados no helper de tradução da webview (`src/webview/localizacao.js`) para capturar chaves e parâmetros ausentes sem expor dados de sincronização.
+- Links diretos para a Política de Privacidade e Termos de Uso nos formulários de issue do GitHub (`.github/ISSUE_TEMPLATE/config.yml`).
+- Testes automatizados de contratos de localização (`test/catalogo-contratos.test.cjs`) e mascaramento de segredos em logs (`test/registro-erro.test.ts`).
+
+### Modificado
+
+- Reestruturação da lista de extensões na prévia de restauração (`src/webview/dashboard.js` e `src/webview/dashboard.css`) utilizando elementos semânticos de lista (`<ul>`, `<li>`) para suporte a tecnologias assistivas e acessibilidade.
+- Ordenação de extensões instaladas (`src/core/installed-extensions.ts`) desacoplada de idioma fixo, injetando comparador baseado na localidade ativa da IDE com desempate estável por ID.
+
+### Corrigido
+
+- Localização dinâmica dos títulos de progresso na criação e aplicação de perfis em `src/providers/dashboard-provider.ts` através das chaves `catalogo.painel.criandoPerfil` e `catalogo.painel.aplicandoPerfil`.
+- Proteção de mensagens de erro não estruturadas na interface com fallback seguro, impedindo exibição de detalhes técnicos internos ao usuário.
+- Sincronização e complementação da descrição no catálogo localizado em português (`package.nls.pt-br.json`).
+
 ## [0.8.1] - 2026-10-30
 
 ### Adicionado
