@@ -195,14 +195,16 @@ export default class GoogleAuth {
                 server.close();
             };
             const completeSuccess = () => complete(this.getSuccessHtml());
-            const completeError = (error: Error) => complete(this.getCompletionErrorHtml(localizarErro(error)));
+            const completeError = (error: Error) => complete(this.getCompletionErrorHtml(
+                localizarErro(error, catalogo.autenticacao.paginaFalhaDescricao())
+            ));
             const rejectAuthorization = (error: Error, res: http.ServerResponse) => {
                 if (completed) {
                     return;
                 }
                 callbackResponse = res;
                 res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-                complete(this.getErrorHtml(localizarErro(error)));
+                complete(this.getErrorHtml(localizarErro(error, catalogo.autenticacao.paginaFalhaDescricao())));
                 rejectCode(error);
             };
             const timeout = setTimeout(() => {

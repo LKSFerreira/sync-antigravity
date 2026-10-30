@@ -15,10 +15,16 @@ export interface IActiveExtensionInfo {
     name?: string;
 }
 
+export type ComparadorDeExtensoes = (
+    primeiraEntrada: IExtensionProfileEntry,
+    segundaEntrada: IExtensionProfileEntry
+) => number;
+
 export interface ICollectInstalledExtensionsOptions {
     candidates: string[];
     activeExtensions: readonly IActiveExtensionInfo[];
     excludeList?: readonly string[];
+    compararExtensoes?: ComparadorDeExtensoes;
 }
 
 interface IExtensionManifestEntry {
@@ -290,8 +296,12 @@ export async function collectInstalledExtensions(
         (entry) => !excludeSet.has(entry.id.toLowerCase())
     );
 
-    filteredEntries.sort((firstEntry, secondEntry) =>
-        firstEntry.id.localeCompare(secondEntry.id, "pt-BR", { sensitivity: "base" })
+    const compararPorId = (primeiraEntrada: IExtensionProfileEntry, segundaEntrada: IExtensionProfileEntry): number =>
+        primeiraEntrada.id < segundaEntrada.id ? -1 : primeiraEntrada.id > segundaEntrada.id ? 1 : 0;
+    const comparar = options.compararExtensoes || compararPorId;
+
+    filteredEntries.sort((primeiraEntrada, segundaEntrada) =>
+        comparar(primeiraEntrada, segundaEntrada) || compararPorId(primeiraEntrada, segundaEntrada)
     );
 
     return filteredEntries;

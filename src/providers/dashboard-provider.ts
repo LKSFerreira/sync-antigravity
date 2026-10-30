@@ -217,7 +217,7 @@ export default class DashboardProvider {
                         enabled: message.syncKeys ? message.syncKeys.includes(item.key) : item.enabled,
                     }));
                     sendLoading("createProfile", true);
-                    this.panel?.webview.postMessage({ type: "syncStart", title: `Criando "${message.name}"` });
+                    this.panel?.webview.postMessage({ type: "syncStart", title: catalogo.painel.criandoPerfil(message.name) });
                     const current = await this.controller.getActiveProfile(syncItems);
                     current.profileName = message.name;
                     await this.drive.saveProfile(current, syncItems, sendProgress);
@@ -285,7 +285,7 @@ export default class DashboardProvider {
                     }
                     this.pendingProfileRestores.delete(message.restoreId);
                     sendLoading(`pull-${pending.profileName}`, true);
-                    this.panel?.webview.postMessage({ type: "syncStart", title: `Aplicando "${pending.profileName}"` });
+                    this.panel?.webview.postMessage({ type: "syncStart", title: catalogo.painel.aplicandoPerfil(pending.profileName) });
                     await this.completeProfilePull(
                         pending.profile,
                         pending.profileName,
@@ -386,6 +386,12 @@ export default class DashboardProvider {
                             folderName: message.folderName || this.localizacao.textos.pagina.raiz,
                         });
                     } catch (err: any) {
+                        this.logger.error(
+                            catalogo.painel.falhaListarDados(),
+                            "DashboardProvider.handleMessage.listAppData",
+                            false,
+                            err
+                        );
                         sendToast("error", localizarErro(err, catalogo.painel.falhaListarDados()));
                     }
                     sendLoading("listAppData", false);
@@ -403,6 +409,12 @@ export default class DashboardProvider {
                             fileName: message.fileName || catalogo.painel.arquivo(),
                         });
                     } catch (err: any) {
+                        this.logger.error(
+                            catalogo.painel.falhaVisualizarArquivo(),
+                            "DashboardProvider.handleMessage.previewFile",
+                            false,
+                            err
+                        );
                         sendToast("error", localizarErro(err, catalogo.painel.falhaVisualizarArquivo()));
                     }
                     sendLoading("previewFile", false);
@@ -411,7 +423,7 @@ export default class DashboardProvider {
             }
         } catch (error: any) {
             this.logger.error(
-                catalogo.painel.falhaAcao(localizarErro(error)),
+                catalogo.painel.falhaAcao(localizarErro(error, catalogo.painel.falhaAcaoGenerica())),
                 "DashboardProvider.handleMessage",
                 true,
                 error
@@ -419,7 +431,7 @@ export default class DashboardProvider {
             // Fecha o modal de sincronização se estiver aberto (permite dispensar em caso de erro)
             this.panel?.webview.postMessage({ type: "syncDone" });
             sendLoading(message.command, false);
-            sendToast("error", localizarErro(error));
+            sendToast("error", localizarErro(error, catalogo.painel.falhaAcaoGenerica()));
         }
     }
 

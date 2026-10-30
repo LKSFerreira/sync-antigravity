@@ -156,9 +156,6 @@ export function localizarErro(error: unknown, fallback?: string): string {
     if (ehErroDaExtensao(error)) {
         return localizarCodigoDeErro(error.codigo, error.parametros);
     }
-    if (error instanceof Error && error.message) {
-        return error.message;
-    }
     return fallback ?? vscode.l10n.t("An unexpected error occurred");
 }
 
@@ -202,7 +199,9 @@ export const catalogo = {
         falhaIniciarSessao: (): string => vscode.l10n.t("Failed to sign in"),
         sessaoEncerrada: (): string => vscode.l10n.t("Signed out"),
         perfilCriado: (nome: string): string => vscode.l10n.t("Profile \"{nome}\" created", { nome }),
+        criandoPerfil: (nome: string): string => vscode.l10n.t("Creating \"{nome}\"", { nome }),
         preparandoPerfil: (nome: string): string => vscode.l10n.t("Preparing \"{nome}\"", { nome }),
+        aplicandoPerfil: (nome: string): string => vscode.l10n.t("Applying \"{nome}\"", { nome }),
         perfilVazio: (): string => vscode.l10n.t("The profile data is empty"),
         previaExpirada: (): string => vscode.l10n.t("The profile preview expired. Apply the profile again."),
         aplicacaoCancelada: (): string => vscode.l10n.t("Profile application canceled"),
@@ -220,6 +219,7 @@ export const catalogo = {
         falhaVisualizarArquivo: (): string => vscode.l10n.t("Failed to view the file"),
         arquivo: (): string => vscode.l10n.t("file"),
         falhaAcao: (erro: string): string => vscode.l10n.t("Dashboard action failed: {erro}", { erro }),
+        falhaAcaoGenerica: (): string => vscode.l10n.t("The dashboard action failed. Try again."),
         perfilAplicado: (nome: string): string => vscode.l10n.t("Profile \"{nome}\" applied", { nome }),
     },
     progresso: {

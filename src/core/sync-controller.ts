@@ -11,10 +11,12 @@ import {
     ExtensionContext,
     Uri,
     commands,
+    env,
     extensions,
     workspace,
 } from "vscode";
 import { catalogo, localizarErro } from "../localizacao/catalogo";
+import { resolverContextoDeIdioma } from "../localizacao/idioma";
 import { IExtensionProfileEntry, IProfile, ISyncItem } from "../models/interfaces";
 import {
     createGlobalLayoutDocument,
@@ -484,10 +486,15 @@ export default class SyncController {
             name: extension.packageJSON?.name,
         }));
 
+        const localidade = resolverContextoDeIdioma(env.language).localidade;
+        const comparador = new Intl.Collator(localidade, { sensitivity: "base" });
+
         return collectInstalledExtensions({
             candidates: this.getExtensionDirectoryCandidates(),
             activeExtensions,
             excludeList,
+            compararExtensoes: (primeiraEntrada, segundaEntrada) =>
+                comparador.compare(primeiraEntrada.id, segundaEntrada.id),
         });
     }
 

@@ -4,6 +4,7 @@
 import { OutputChannel, window } from "vscode";
 import util from "node:util";
 import { catalogo } from "../localizacao/catalogo";
+import { resumirErroParaRegistro } from "./registro-erro";
 
 export default class Logger {
 	private readonly output: OutputChannel;
@@ -100,7 +101,7 @@ export default class Logger {
 		return `[${level.toUpperCase()}] ${
 			origin ? `${origin}-> ` : ""
 		}${this.timestamp()}: ${message}${
-			errorObject ? `\n${catalogo.registros.objetoDeErro()}:\n${this.prettyStr(errorObject)}` : ""
+			errorObject ? `\n${catalogo.registros.objetoDeErro()}:\n${resumirErroParaRegistro(errorObject)}` : ""
 		}`;
 	}
 
