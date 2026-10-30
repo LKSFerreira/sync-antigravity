@@ -61,3 +61,34 @@ test("extrai mensagem defensivamente quando o valor é um objeto com propriedade
 
     assert.equal(t("comum.aplicar"), "Aplicar");
 });
+
+test("diagnostica chave ausente sem incluir dados de sincronização", () => {
+    const diagnosticos = [];
+    const { t } = criarLocalizador(criarContrato(), (diagnostico) => diagnosticos.push(diagnostico));
+
+    assert.equal(t("perfil.inexistente", { nome: "perfil-sigiloso" }), "[perfil.inexistente]");
+    assert.deepEqual(diagnosticos, [{ tipo: "chave-ausente", chave: "perfil.inexistente" }]);
+    assert.doesNotMatch(JSON.stringify(diagnosticos), /perfil-sigiloso/);
+});
+
+test("diagnostica todos os parâmetros ausentes e preserva seus placeholders", () => {
+    const diagnosticos = [];
+    const contrato = criarContrato();
+    contrato.textos.detalhe = "Perfil {nome} em {pasta}";
+    const { t } = criarLocalizador(contrato, (diagnostico) => diagnosticos.push(diagnostico));
+
+    assert.equal(t("detalhe"), "Perfil {nome} em {pasta}");
+    assert.deepEqual(diagnosticos, [
+        { tipo: "parametro-ausente", chave: "detalhe", parametro: "nome" },
+        { tipo: "parametro-ausente", chave: "detalhe", parametro: "pasta" },
+    ]);
+});
+
+test("não emite diagnóstico para traduções e parâmetros válidos", () => {
+    const diagnosticos = [];
+    const { t, tp } = criarLocalizador(criarContrato(), (diagnostico) => diagnosticos.push(diagnostico));
+
+    assert.equal(t("saudacao", { nome: "valor-sigiloso" }), "Olá, valor-sigiloso!");
+    assert.equal(tp("contagem.singular", "contagem.plural", 2), "2 itens");
+    assert.deepEqual(diagnosticos, []);
+});

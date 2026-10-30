@@ -337,3 +337,31 @@ test("collectInstalledExtensions ignora manifesto com formato não matricial", a
         await rm(temporaryRoot, { recursive: true, force: true });
     }
 });
+
+test("collectInstalledExtensions usa o comparador injetado e desempata pelo ID", async () => {
+    const activeExtensions = [
+        { id: "empresa.zeta", isBuiltin: false },
+        { id: "empresa.alfa", isBuiltin: false },
+    ];
+    const comparacoes: string[] = [];
+
+    const ordenadoPelaFronteira = await collectInstalledExtensions({
+        candidates: [],
+        activeExtensions,
+        compararExtensoes: (primeiraEntrada, segundaEntrada) => {
+            comparacoes.push(`${primeiraEntrada.id}:${segundaEntrada.id}`);
+            return segundaEntrada.id.localeCompare(primeiraEntrada.id);
+        },
+    });
+
+    assert.deepEqual(ordenadoPelaFronteira.map((entrada) => entrada.id), ["empresa.zeta", "empresa.alfa"]);
+    assert.ok(comparacoes.length > 0);
+
+    const ordenadoNoDesempate = await collectInstalledExtensions({
+        candidates: [],
+        activeExtensions,
+        compararExtensoes: () => 0,
+    });
+
+    assert.deepEqual(ordenadoNoDesempate.map((entrada) => entrada.id), ["empresa.alfa", "empresa.zeta"]);
+});
