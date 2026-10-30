@@ -11,6 +11,8 @@ node_modules/**
 client_secret_*.apps.googleusercontent.com.json
 preview-login-success.html
 images/icon_original.png
+*.png
+!images/icon.png
 artifacts/**
 .github/**
 docs/**

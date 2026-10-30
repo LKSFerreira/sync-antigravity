@@ -1,6 +1,7 @@
 {
+    "extensao.titulo": "Sync Antigravity - Settings & Extensions Sync (Antigravity Sync)",
     "extensao.nome": "Sync Antigravity",
-    "extensao.descricao": "Sync Antigravity settings, extensions, keyboard shortcuts, snippets, and layout across devices using Google Drive",
+    "extensao.descricao": "The complete settings, layout, and extensions sync for Antigravity IDE (Antigravity Sync). Synchronize keyboard shortcuts, snippets, and preferences across devices using Google Drive.",
     "comando.abrirPainel.titulo": "Open dashboard",
     "comando.reverterLayout.titulo": "Restore latest layout",
     "configuracao.extensoesExcluidas.descricao": "Extension IDs to exclude from synchronization"

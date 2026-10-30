@@ -1,8 +1,8 @@
 {
   "name": "sync-antigravity",
-  "displayName": "%extensao.nome%",
+  "displayName": "%extensao.titulo%",
   "description": "%extensao.descricao%",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "publisher": "lksferreira",
   "author": {
     "name": "LKSFerreira"
@@ -21,17 +21,35 @@
     "vscode": "^1.90.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Keymaps",
+    "Snippets"
   ],
   "keywords": [
+    "antigravity-sync",
+    "antigravity sync",
+    "antigravity",
+    "sync-antigravity",
     "sync",
-    "settings",
-    "extensions",
+    "settings-sync",
+    "settings sync",
+    "extension-sync",
+    "extensions sync",
+    "backup",
+    "restore",
+    "google-drive",
+    "google drive sync",
+    "cloud-sync",
     "keybindings",
     "snippets",
-    "google-drive",
+    "layout-sync",
     "profile",
-    "antigravity"
+    "sincronizar",
+    "sincronizacao",
+    "configuracoes",
+    "extensoes",
+    "atalhos",
+    "ide-sync"
   ],
   "activationEvents": [
     "onStartupFinished"
