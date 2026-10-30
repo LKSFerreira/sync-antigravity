@@ -2,6 +2,22 @@
 
 > 🇺🇸 **Prefer to read in English? See the [English changelog](CHANGELOG.md).**
 
+## [0.8.1] - 2026-10-30
+
+### Adicionado
+
+- Formulários estruturados de Issue do GitHub (`.github/ISSUE_TEMPLATE/`) para relatos de defeitos, sugestões de melhorias e dúvidas/contato, com política bilíngue oficial (português do Brasil ou inglês).
+- Expansão de palavras-chave (`keywords`) e categorias no manifesto da extensão em inglês e português (`antigravity-sync`, `settings-sync`, `sincronizar`, `sincronizacao`, `backup`, `restore`, `configuracoes`) para otimização de descoberta em ambientes recém-instalados no Open VSX.
+- Nome de exibição (`displayName`) otimizado no manifesto e nos catálogos NLS para corresponder a buscas por "Antigravity Sync" e "Settings Sync".
+
+### Corrigido
+
+- Correção do estouro vertical no modal de confirmação de sincronização de extensões: implementada restrição de altura máxima (`max-height: calc(100vh - 48px)`), rolagem vertical independente no corpo do modal (`overflow-y: auto`) e fixação do cabeçalho e rodapé com botões de ação sempre visíveis.
+- Correção do defeito de localização nos botões de aplicação (`[comum.aplicar]`): normalização dos catálogos traduzidos (`bundle.l10n.pt-br.json` e `bundle.l10n.pt.json`) para usar strings escalares diretas em chaves contextualizadas por comentários.
+- Endurecimento do validador de localização (`scripts/validar-localizacao.cjs`) para rejeitar objetos estruturados em catálogos traduzidos, prevenindo regressões de NLS no pipeline de CI/CD.
+- Resiliência defensiva no helper de localização da webview (`src/webview/localizacao.js`) para extrair textos de objetos estruturados caso ocorra divergência de contrato.
+- Exclusão de capturas de tela e arquivos de imagem raiz do empacotamento VSIX (`.vscodeignore`).
+
 ## [0.8.0] - 2026-10-17
 
 ### Adicionado

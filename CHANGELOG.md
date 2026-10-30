@@ -2,6 +2,22 @@
 
 > 🇧🇷 **Prefere ler em português? Acesse o [changelog em pt-BR](CHANGELOG.pt-BR.md).**
 
+## [0.8.1] - 2026-10-30
+
+### Added
+
+- Structured GitHub Issue Forms (`.github/ISSUE_TEMPLATE/`) for bug reports, feature requests, and questions/contact, with an explicit bilingual language contract (English or Brazilian Portuguese).
+- Expanded search keywords and categories in the extension manifest across English and Portuguese (`antigravity-sync`, `settings-sync`, `sincronizar`, `sincronizacao`, `backup`, `restore`, `configuracoes`) to optimize discoverability on fresh installations via Open VSX.
+- Enhanced `displayName` in the extension manifest and NLS bundles to match high-intent searches for "Antigravity Sync" and "Settings Sync".
+
+### Fixed
+
+- Resolved vertical overflow in the extension synchronization confirmation modal: added viewport height constraints (`max-height: calc(100vh - 48px)`), smooth vertical scrollbar for long extension lists, and pinned modal header and footer actions.
+- Fixed localization key leakage on action buttons (`[comum.aplicar]`): normalized translated bundles (`bundle.l10n.pt-br.json` and `bundle.l10n.pt.json`) to scalar strings for comment-annotated keys.
+- Hardened the localization validator script (`scripts/validar-localizacao.cjs`) to reject non-string values in translated bundles, preventing NLS regressions in CI/CD.
+- Added defensive extraction in the webview localization helper (`src/webview/localizacao.js`) to extract nested `.message` strings if structured objects are received.
+- Excluded root screenshots and image files from the packaged VSIX artifact (`.vscodeignore`).
+
 ## [0.8.0] - 2026-10-17
 
 ### Added
