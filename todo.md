@@ -1,0 +1,1 @@
+Sync Antigravity - Settings & Extensions Sync (Antigravity Sync) -> Sync Antigravity - Settings & Extensions Sync (Antigravity IDE)
